@@ -21,7 +21,7 @@ namespace WebServerMVC.Data
                     new Client
                     {
                         ClientId = Guid.NewGuid().ToString(),
-                        ConnectionId = null,
+                        ConnectionId = string.Empty,
                         ConnectedAt = DateTime.UtcNow.AddMinutes(-30),
                         Gender = "male",
                         Latitude = 37.5642135,
@@ -31,7 +31,7 @@ namespace WebServerMVC.Data
                     new Client
                     {
                         ClientId = Guid.NewGuid().ToString(),
-                        ConnectionId = null,
+                        ConnectionId = string.Empty,
                         ConnectedAt = DateTime.UtcNow.AddMinutes(-25),
                         Gender = "female",
                         Latitude = 37.5642135,
