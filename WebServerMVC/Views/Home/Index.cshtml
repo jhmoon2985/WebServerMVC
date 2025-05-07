@@ -1,8 +1,50 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "채팅 매칭 서비스";
 }
 
 <div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+    <h1 class="display-4">WebServerMVC 채팅 매칭 서비스</h1>
+    <p>채팅 매칭 시스템의 웹 서버 인터페이스입니다.</p>
+
+    <div class="mt-4">
+        <h2>API 엔드포인트</h2>
+        <ul class="list-group">
+            <li class="list-group-item">
+                <strong>SignalR Hub:</strong> /chathub
+            </li>
+            <li class="list-group-item">
+                <strong>클라이언트 정보 조회:</strong> GET /api/client/{clientId}
+            </li>
+            <li class="list-group-item">
+                <strong>매칭 정보 조회:</strong> GET /api/client/{clientId}/match
+            </li>
+            <li class="list-group-item">
+                <strong>클라이언트 등록:</strong> POST /api/client/register
+            </li>
+            <li class="list-group-item">
+                <strong>위치 정보 업데이트:</strong> POST /api/client/{clientId}/location
+            </li>
+        </ul>
+    </div>
+
+    <div class="mt-4">
+        <h2>SignalR 메서드</h2>
+        <ul class="list-group">
+            <li class="list-group-item">
+                <strong>Register:</strong> 클라이언트 등록
+            </li>
+            <li class="list-group-item">
+                <strong>UpdateLocation:</strong> 위치 정보 업데이트
+            </li>
+            <li class="list-group-item">
+                <strong>JoinWaitingQueue:</strong> 대기열 참가
+            </li>
+            <li class="list-group-item">
+                <strong>SendMessage:</strong> 메시지 전송
+            </li>
+            <li class="list-group-item">
+                <strong>EndChat:</strong> 채팅 종료 및 재매칭
+            </li>
+        </ul>
+    </div>
 </div>

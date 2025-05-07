@@ -1,0 +1,110 @@
+﻿@model List<WebServerMVC.Models.Client>
+@{
+    ViewData["Title"] = "클라이언트 관리";
+}
+
+<div class="container">
+    <h1>클라이언트 관리</h1>
+    <p>현재 서버에 연결된 클라이언트 목록입니다.</p>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>클라이언트 통계</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <h5>총 클라이언트</h5>
+                            <h3>@Model.Count</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <h5>접속 중</h5>
+                            <h3>@Model.Count(c => !string.IsNullOrEmpty(c.ConnectionId))</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <h5>매칭됨</h5>
+                            <h3>@Model.Count(c => c.IsMatched)</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-dark">
+                        <div class="card-body">
+                            <h5>매칭 대기 중</h5>
+                            <h3>@Model.Count(c => !string.IsNullOrEmpty(c.ConnectionId) && !c.IsMatched)</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5>클라이언트 목록</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>클라이언트 ID</th>
+                            <th>접속 시간</th>
+                            <th>성별</th>
+                            <th>위치</th>
+                            <th>상태</th>
+                            <th>액션</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var client in Model.OrderByDescending(c => c.ConnectedAt))
+                        {
+                            <tr>
+                                <td>@client.ClientId.Substring(0, 8)...</td>
+                                <td>@client.ConnectedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td>@(string.IsNullOrEmpty(client.Gender) ? "미설정" : (client.Gender.ToLower() == "male" ? "남성" : "여성"))</td>
+                                <td>@client.Latitude, @client.Longitude</td>
+                                <td>
+                                    @if (string.IsNullOrEmpty(client.ConnectionId))
+                                    {
+                                        <span class="badge bg-secondary">오프라인</span>
+                                    }
+                                    else if (client.IsMatched)
+                                    {
+                                        <span class="badge bg-success">매칭됨</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning text-dark">대기 중</span>
+                                    }
+                                </td>
+                                <td>
+                                    <a asp-action="Details" asp-route-id="@client.ClientId" class="btn btn-sm btn-primary">상세</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // 페이지 자동 새로고침 (30초마다)
+        setTimeout(function() {
+            location.reload();
+        }, 30000);
+    </script>
+}

@@ -1,0 +1,182 @@
+﻿@model WebServerMVC.Models.Client
+@{
+    ViewData["Title"] = "클라이언트 상세";
+    var matchedClient = ViewBag.MatchedClient as WebServerMVC.Models.Client;
+}
+
+<div class="container">
+    <div class="mb-3">
+        <a asp-action="Index" class="btn btn-outline-secondary">← 목록으로</a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>클라이언트 정보</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <tr>
+                            <th>클라이언트 ID</th>
+                            <td>@Model.ClientId</td>
+                        </tr>
+                        <tr>
+                            <th>연결 ID</th>
+                            <td>@(string.IsNullOrEmpty(Model.ConnectionId) ? "연결되지 않음" : Model.ConnectionId)</td>
+                        </tr>
+                        <tr>
+                            <th>연결 시간</th>
+                            <td>@Model.ConnectedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        </tr>
+                        <tr>
+                            <th>성별</th>
+                            <td>@(string.IsNullOrEmpty(Model.Gender) ? "미설정" : (Model.Gender.ToLower() == "male" ? "남성" : "여성"))</td>
+                        </tr>
+                        <tr>
+                            <th>위치</th>
+                            <td>위도: @Model.Latitude, 경도: @Model.Longitude</td>
+                        </tr>
+                        <tr>
+                            <th>상태</th>
+                            <td>
+                                @if (string.IsNullOrEmpty(Model.ConnectionId))
+                                {
+                                    <span class="badge bg-secondary">오프라인</span>
+                                }
+                                else if (Model.IsMatched)
+                                {
+                                    <span class="badge bg-success">매칭됨</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning text-dark">대기 중</span>
+                                }
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>매칭 정보</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.IsMatched && matchedClient != null)
+                    {
+                        <table class="table">
+                            <tr>
+                                <th>매칭된 클라이언트 ID</th>
+                                <td>@matchedClient.ClientId</td>
+                            </tr>
+                            <tr>
+                                <th>성별</th>
+                                <td>@(string.IsNullOrEmpty(matchedClient.Gender) ? "미설정" : (matchedClient.Gender.ToLower() == "male" ? "남성" : "여성"))</td>
+                            </tr>
+                            <tr>
+                                <th>위치</th>
+                                <td>위도: @matchedClient.Latitude, 경도: @matchedClient.Longitude</td>
+                            </tr>
+                            <tr>
+                                <th>거리</th>
+                                <td>
+                                    @{
+                                        var locationService = new WebServerMVC.Services.LocationService();
+                                        var distance = locationService.CalculateDistance(
+                                        Model.Latitude, Model.Longitude,
+                                        matchedClient.Latitude, matchedClient.Longitude
+                                        );
+                                    }
+                                    @distance km
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>액션</th>
+                                <td>
+                                    <a asp-action="Details" asp-route-id="@matchedClient.ClientId" class="btn btn-sm btn-primary">상대방 정보 보기</a>
+                                </td>
+                            </tr>
+                        </table>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info">
+                            현재 매칭된 클라이언트가 없습니다.
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>위치 지도</h5>
+                </div>
+                <div class="card-body">
+                    <div id="map" style="height: 300px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY"></script>
+    <script>
+        // 지도 초기화
+        function initMap() {
+            var clientLocation = { lat: @Model.Latitude, lng: @Model.Longitude };
+            var map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 10,
+                center: clientLocation
+            });
+
+            // 클라이언트 마커 추가
+            var clientMarker = new google.maps.Marker({
+                position: clientLocation,
+                map: map,
+                title: '클라이언트 위치'
+            });
+
+        @if (Model.IsMatched && matchedClient != null)
+        {
+            <text>
+                    // 매칭된 클라이언트 마커 추가
+                    var matchedLocation = { lat: @matchedClient.Latitude, lng: @matchedClient.Longitude };
+                    var matchedMarker = new google.maps.Marker({
+                        position: matchedLocation,
+                        map: map,
+                        title: '매칭된 클라이언트 위치',
+                        icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
+                    });
+
+                    // 두 위치를 모두 보이게 맵 조정
+                    var bounds = new google.maps.LatLngBounds();
+                    bounds.extend(clientLocation);
+                    bounds.extend(matchedLocation);
+                    map.fitBounds(bounds);
+
+                    // 선 그리기
+                    var path = new google.maps.Polyline({
+                        path: [clientLocation, matchedLocation],
+                        geodesic: true,
+                        strokeColor: '#FF0000',
+                        strokeOpacity: 1.0,
+                        strokeWeight: 2
+                    });
+                    path.setMap(map);
+            </text>
+        }
+        }
+
+        // 지도 로드
+        window.onload = initMap;
+
+        // 페이지 자동 새로고침 (30초마다)
+        setTimeout(function() {
+            location.reload();
+        }, 30000);
+    </script>
+}
