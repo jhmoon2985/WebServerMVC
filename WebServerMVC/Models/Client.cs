@@ -4,13 +4,13 @@ namespace WebServerMVC.Models
 {
     public class Client
     {
-        public string ClientId { get; set; }
-        public string ConnectionId { get; set; }
-        public DateTime ConnectedAt { get; set; }
-        public string Gender { get; set; }
-        public double Latitude { get; set; }
-        public double Longitude { get; set; }
-        public bool IsMatched { get; set; }
-        public string MatchedWithClientId { get; set; }
+        public string ClientId { get; set; } = Guid.NewGuid().ToString();
+        public string ConnectionId { get; set; } = string.Empty;
+        public DateTime ConnectedAt { get; set; } = DateTime.UtcNow;
+        public string Gender { get; set; } = string.Empty;
+        public double Latitude { get; set; } = 0;
+        public double Longitude { get; set; } = 0;
+        public bool IsMatched { get; set; } = false;
+        public string? MatchedWithClientId { get; set; } = null;
     }
 }
