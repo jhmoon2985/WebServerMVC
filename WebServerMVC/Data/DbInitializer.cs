@@ -1,18 +1,15 @@
-﻿using WebServerMVC.Models;
+﻿using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
+using WebServerMVC.Models;
 
 namespace WebServerMVC.Data
 {
     public static class DbInitializer
     {
-        public static async Task Initialize(AppDbContext context)
+        public static async Task SeedData(AppDbContext context)
         {
-            // 데이터베이스 자동 생성
-            await context.Database.EnsureCreatedAsync();
-
             // 클라이언트 데이터가 없는 경우에만 샘플 데이터 추가
             if (!context.Clients.Any())
             {
