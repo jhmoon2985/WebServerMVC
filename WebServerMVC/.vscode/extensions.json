@@ -1,0 +1,12 @@
+{
+    "recommendations": [
+        "ms-dotnettools.csdevkit",
+        "ms-dotnettools.csharp",
+        "ms-dotnettools.dotnet-interactive-vscode",
+        "ms-vscode.vscode-node-azure-pack",
+        "formulahendry.dotnet-test-explorer",
+        "patcx.vscode-nuget-gallery",
+        "humao.rest-client",
+        "ms-azuretools.vscode-docker"
+    ]
+}
