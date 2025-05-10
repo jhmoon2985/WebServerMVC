@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace WebServerMVC.Hubs
 {
-    [Authorize]
+    //[Authorize]
     public class ChatHub : Hub
     {
         private readonly IClientService _clientService;
