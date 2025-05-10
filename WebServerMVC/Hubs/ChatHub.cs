@@ -44,10 +44,23 @@ namespace WebServerMVC.Hubs
 
         public async Task Register(string existingClientId = null)
         {
-            string clientId = await _clientService.RegisterClient(Context.ConnectionId, existingClientId);
-            Context.Items["ClientId"] = clientId;
+            try
+            {
+                _logger.LogInformation($"Register called with existingClientId: {existingClientId}");
 
-            await Clients.Caller.SendAsync("Registered", new { ClientId = clientId });
+                string clientId = await _clientService.RegisterClient(Context.ConnectionId, existingClientId);
+                Context.Items["ClientId"] = clientId;
+
+                _logger.LogInformation($"Client registered: {clientId}");
+
+                await Clients.Caller.SendAsync("Registered", new { ClientId = clientId });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Register error: {ex.Message} | StackTrace: {ex.StackTrace}");
+                await Clients.Caller.SendAsync("RegisterError", ex.Message);
+                throw; // 클라이언트에게 오류 전파
+            }
         }
 
         public async Task UpdateLocation(double latitude, double longitude)

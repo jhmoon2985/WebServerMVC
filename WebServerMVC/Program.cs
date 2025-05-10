@@ -24,24 +24,24 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.InstanceName = "WebServerMVC_";
 });
 
-// ½Ì±ÛÅæ ¼­ºñ½º
+// ï¿½Ì±ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 builder.Services.AddSingleton<WaitingQueue>();
 
-// ½ºÄÚÇÁ ¼­ºñ½º
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 builder.Services.AddScoped<IClientRepository, ClientRepository>();
 builder.Services.AddScoped<IMatchRepository, MatchRepository>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IMatchingService, MatchingService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
 
-// ¼³Á¤ ¹ÙÀÎµù
+// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Îµï¿½
 builder.Services.Configure<ClientSettings>(builder.Configuration.GetSection("ClientSettings"));
 builder.Services.Configure<MatchingSettings>(builder.Configuration.GetSection("MatchingSettings"));
 
-// ¹é±×¶ó¿îµå ¼­ºñ½º
+// ï¿½ï¿½×¶ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 builder.Services.AddHostedService<MatchingBackgroundService>();
 
-// CORS ¼³Á¤
+// CORS ï¿½ï¿½ï¿½ï¿½
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
 builder.Services.AddCors(options =>
 {
@@ -77,7 +77,7 @@ app.MapControllerRoute(
 
 app.MapHub<ChatHub>("/chathub");
 
-// ¸¶ÀÌ±×·¹ÀÌ¼Ç Àû¿ë ¹× ½Ãµå µ¥ÀÌÅÍ ÃÊ±âÈ­
+// ï¿½ï¿½ï¿½Ì±×·ï¿½ï¿½Ì¼ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ãµï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -85,19 +85,19 @@ using (var scope = app.Services.CreateScope())
     {
         var context = services.GetRequiredService<AppDbContext>();
 
-        // ¸¶ÀÌ±×·¹ÀÌ¼Ç Àû¿ë
+        // ï¿½ï¿½ï¿½Ì±×·ï¿½ï¿½Ì¼ï¿½ ï¿½ï¿½ï¿½ï¿½
         context.Database.Migrate();
 
-        // ½Ãµå µ¥ÀÌÅÍ ÃÊ±âÈ­
+        // ï¿½Ãµï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­
         await DbInitializer.SeedData(context);
 
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogInformation("µ¥ÀÌÅÍº£ÀÌ½º ¸¶ÀÌ±×·¹ÀÌ¼Ç ¹× ½Ãµå µ¥ÀÌÅÍ ÃÊ±âÈ­°¡ ¿Ï·áµÇ¾ú½À´Ï´Ù.");
+        logger.LogInformation("ï¿½ï¿½ï¿½ï¿½ï¿½Íºï¿½ï¿½Ì½ï¿½ ï¿½ï¿½ï¿½Ì±×·ï¿½ï¿½Ì¼ï¿½ ï¿½ï¿½ ï¿½Ãµï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­ï¿½ï¿½ ï¿½Ï·ï¿½Ç¾ï¿½ï¿½ï¿½ï¿½Ï´ï¿½.");
     }
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "µ¥ÀÌÅÍº£ÀÌ½º ¸¶ÀÌ±×·¹ÀÌ¼Ç ¶Ç´Â ½Ãµå µ¥ÀÌÅÍ ÃÊ±âÈ­ Áß ¿À·ù°¡ ¹ß»ýÇß½À´Ï´Ù.");
+        logger.LogError(ex, "ï¿½ï¿½ï¿½ï¿½ï¿½Íºï¿½ï¿½Ì½ï¿½ ï¿½ï¿½ï¿½Ì±×·ï¿½ï¿½Ì¼ï¿½ ï¿½Ç´ï¿½ ï¿½Ãµï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ß»ï¿½ï¿½ß½ï¿½ï¿½Ï´ï¿½.");
     }
 }
 
