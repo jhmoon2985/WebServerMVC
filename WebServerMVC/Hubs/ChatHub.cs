@@ -35,7 +35,32 @@ namespace WebServerMVC.Hubs
             var clientId = Context.Items["ClientId"] as string;
             if (!string.IsNullOrEmpty(clientId))
             {
+                // 활성 매칭 종료
                 await _matchingService.EndMatch(clientId);
+
+                // 클라이언트 상태 업데이트
+                var client = await _clientService.GetClientById(clientId);
+                if (client != null)
+                {
+                    // ConnectionId를 비우고 IsMatched 상태 해제
+                    client.ConnectionId = string.Empty;
+                    client.IsMatched = false;
+                    client.MatchedWithClientId = null;
+
+                    // DB에 업데이트
+                    try
+                    {
+                        await _clientService.UpdateClientLocation(clientId, client.Latitude, client.Longitude);
+                        _logger.LogInformation($"Client {clientId} disconnected and state updated in database.");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError($"Error updating client state on disconnect: {ex.Message}");
+                    }
+                }
+
+                // 대기열에서 제거
+                _matchingService.RemoveFromWaitingQueue(clientId);
             }
 
             await base.OnDisconnectedAsync(exception);
@@ -69,6 +94,15 @@ namespace WebServerMVC.Hubs
             if (!string.IsNullOrEmpty(clientId))
             {
                 await _clientService.UpdateClientLocation(clientId, latitude, longitude);
+            }
+        }
+
+        public async Task UpdateGender(string gender)
+        {
+            var clientId = Context.Items["ClientId"] as string;
+            if (!string.IsNullOrEmpty(clientId))
+            {
+                await _clientService.UpdateClientGender(clientId, gender);
             }
         }
 

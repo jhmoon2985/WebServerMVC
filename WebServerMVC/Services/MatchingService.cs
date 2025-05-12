@@ -147,5 +147,10 @@ namespace WebServerMVC.Services
 
             return null;
         }
+        public Task RemoveFromWaitingQueue(string clientId)
+        {
+            _waitingQueue.Remove(clientId);
+            return Task.CompletedTask;
+        }
     }
 }

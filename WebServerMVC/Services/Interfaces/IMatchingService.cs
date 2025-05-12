@@ -9,5 +9,6 @@ namespace WebServerMVC.Services.Interfaces
         Task ProcessMatchingQueue();
         Task EndMatch(string clientId);
         Task<Client> GetMatchedClient(string clientId);
+        Task RemoveFromWaitingQueue(string clientId);
     }
 }
