@@ -19,17 +19,20 @@ namespace WebServerMVC.Services
             _cache = cache;
         }
 
-        public async Task<string> RegisterClient(string connectionId, string existingClientId = null)
+        public async Task<string> RegisterClient(string clientId, string connectionId, double latitude, double longitude, string gender)
         {
-            if (!string.IsNullOrEmpty(existingClientId))
+            if (!string.IsNullOrEmpty(clientId))
             {
-                var client = await GetClientById(existingClientId);
+                var client = await GetClientById(clientId);
                 if (client != null)
                 {
                     client.ConnectionId = connectionId;
                     client.ConnectedAt = DateTime.UtcNow;
+                    client.Latitude = latitude;
+                    client.Longitude = longitude;
+                    client.Gender = gender;
                     await _clientRepository.UpdateClient(client);
-                    return existingClientId;
+                    return clientId;
                 }
             }
 
@@ -38,6 +41,9 @@ namespace WebServerMVC.Services
                 ClientId = Guid.NewGuid().ToString(),
                 ConnectionId = connectionId,
                 ConnectedAt = DateTime.UtcNow,
+                Latitude = latitude,
+                Longitude = longitude,
+                Gender = gender,
                 IsMatched = false
             };
 
@@ -114,6 +120,19 @@ namespace WebServerMVC.Services
         {
             // 모든 클라이언트를 리포지토리에서 가져옴
             return await _clientRepository.GetAllClients();
+        }
+        public async Task UpdateClient(Client client)
+        {
+            // DB 업데이트
+            await _clientRepository.UpdateClient(client);
+
+            // Redis 캐시 업데이트
+            await _cache.SetStringAsync($"client:{client.ClientId}",
+                JsonSerializer.Serialize(client),
+                new DistributedCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24)
+                });
         }
     }
 }

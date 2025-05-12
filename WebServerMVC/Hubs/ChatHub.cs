@@ -50,7 +50,8 @@ namespace WebServerMVC.Hubs
                     // DB에 업데이트
                     try
                     {
-                        await _clientService.UpdateClientLocation(clientId, client.Latitude, client.Longitude);
+                        // UpdateClient 메서드로 변경하여 모든 상태를 한번에 업데이트
+                        await _clientService.UpdateClient(client);
                         _logger.LogInformation($"Client {clientId} disconnected and state updated in database.");
                     }
                     catch (Exception ex)
@@ -67,18 +68,47 @@ namespace WebServerMVC.Hubs
             _logger.LogInformation($"Client disconnected: {Context.ConnectionId}");
         }
 
-        public async Task Register(string existingClientId = null)
+        public async Task Register(object registrationInfo)
         {
             try
             {
-                _logger.LogInformation($"Register called with existingClientId: {existingClientId}");
+                var info = JObject.FromObject(registrationInfo);
 
-                string clientId = await _clientService.RegisterClient(Context.ConnectionId, existingClientId);
-                Context.Items["ClientId"] = clientId;
+                // 클라이언트 ID 추출
+                string clientId = info["ClientId"]?.ToString();
 
-                _logger.LogInformation($"Client registered: {clientId}");
+                // 새 클라이언트 ID 생성 (필요한 경우)
+                if (string.IsNullOrEmpty(clientId))
+                {
+                    clientId = Guid.NewGuid().ToString();
+                }
 
-                await Clients.Caller.SendAsync("Registered", new { ClientId = clientId });
+                // 위치 정보 추출
+                double latitude = 0;
+                double longitude = 0;
+
+                if (info["Latitude"] != null)
+                    latitude = info["Latitude"].ToObject<double>();
+
+                if (info["Longitude"] != null)
+                    longitude = info["Longitude"].ToObject<double>();
+
+                // 성별 정보 추출
+                string gender = "male"; // 기본값
+
+                if (info["Gender"] != null)
+                    gender = info["Gender"].ToString();
+
+                // 연결 ID와 클라이언트 ID 매핑
+                string connectionId = Context.ConnectionId;
+
+                // 클라이언트 정보 저장 (서비스를 통해)
+                await _clientService.RegisterClientAsync(clientId, connectionId, latitude, longitude, gender);
+
+                // 클라이언트에게 등록 완료 알림
+                await Clients.Caller.SendAsync("Registered", new { clientId });
+
+                _logger.LogInformation($"Client registered: {clientId}, ConnectionId: {connectionId}, Gender: {gender}");
             }
             catch (Exception ex)
             {
