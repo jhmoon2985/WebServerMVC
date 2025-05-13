@@ -140,21 +140,22 @@ namespace WebServerMVC.Hubs
 
         public async Task JoinWaitingQueue(string gender)
         {
+            var clientId = Context.Items["ClientId"] as string;
             try
             {
-                var clientId = Context.Items["ClientId"] as string;
+
                 _logger.LogInformation($"Accessing ClientId from Context.Items: {clientId ?? "null"}");
                 if (!string.IsNullOrEmpty(clientId))
                 {
                     await _matchingService.AddToWaitingQueue(clientId, Context.ConnectionId, gender);
 
                     // 매칭 프로세스 시작
-                    await _matchingService.ProcessMatchingQueue();
+                    //await _matchingService.ProcessMatchingQueue();
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError($"JoinWaitingQueue error: {ex.Message} | StackTrace: {ex.StackTrace}");
+                _logger.LogError($"JoinWaitingQueue error: {ex.Message} | StackTrace: {ex.StackTrace} | clientId: {clientId}");
                 await Clients.Caller.SendAsync("JoinWaitingQueueError", ex.Message);
                 throw; // 클라이언트에게 오류 전파
             }
@@ -195,7 +196,7 @@ namespace WebServerMVC.Hubs
                 if (client != null)
                 {
                     await _matchingService.AddToWaitingQueue(clientId, Context.ConnectionId, client.Gender);
-                    await _matchingService.ProcessMatchingQueue();
+                    //await _matchingService.ProcessMatchingQueue();
                 }
             }
         }
