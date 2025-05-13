@@ -56,7 +56,17 @@ namespace WebServerMVC.Controllers
                 return BadRequest(new { message = "ConnectionId is required" });
             }
 
-            string clientId = await _clientService.RegisterClient(request.ConnectionId, request.ExistingClientId);
+            // 기본 위치 (서울 중심부)
+            double latitude = 35.5642135;
+            double longitude = 127.0016985;
+            string gender = "male"; // 기본값
+
+            string clientId = await _clientService.RegisterClient(
+                request.ExistingClientId,
+                request.ConnectionId,
+                latitude,
+                longitude,
+                gender);
 
             return Ok(new { ClientId = clientId });
         }
@@ -74,6 +84,9 @@ namespace WebServerMVC.Controllers
     {
         public string ConnectionId { get; set; }
         public string ExistingClientId { get; set; }
+        public double Latitude { get; set; } = 37.5642135;  // 기본값 설정
+        public double Longitude { get; set; } = 127.0016985;  // 기본값 설정
+        public string Gender { get; set; } = "male";  // 기본값 설정
     }
 
     public class UpdateLocationRequest

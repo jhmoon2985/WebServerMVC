@@ -4,6 +4,8 @@ using WebServerMVC.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace WebServerMVC.Hubs
 {
@@ -72,38 +74,39 @@ namespace WebServerMVC.Hubs
         {
             try
             {
-                var info = JObject.FromObject(registrationInfo);
+                // registrationInfo가 JSON 문자열을 포함하는 경우
+                string jsonString = registrationInfo.ToString();
+
+                // 따옴표가 포함된 문자열이면 파싱
+                var info = JObject.Parse(jsonString);
 
                 // 클라이언트 ID 추출
-                string clientId = info["ClientId"]?.ToString();
-
-                // 새 클라이언트 ID 생성 (필요한 경우)
-                if (string.IsNullOrEmpty(clientId))
-                {
-                    clientId = Guid.NewGuid().ToString();
-                }
+                string clientId = info["clientId"]?.ToString();
 
                 // 위치 정보 추출
-                double latitude = 0;
-                double longitude = 0;
+                double latitude = 37.5642135; // 기본값
+                double longitude = 127.0016985; // 기본값
 
-                if (info["Latitude"] != null)
-                    latitude = info["Latitude"].ToObject<double>();
+                if (info["latitude"] != null)
+                    latitude = info["latitude"].ToObject<double>();
 
-                if (info["Longitude"] != null)
-                    longitude = info["Longitude"].ToObject<double>();
+                if (info["longitude"] != null)
+                    longitude = info["longitude"].ToObject<double>();
 
                 // 성별 정보 추출
                 string gender = "male"; // 기본값
 
-                if (info["Gender"] != null)
-                    gender = info["Gender"].ToString();
+                if (info["gender"] != null)
+                    gender = info["gender"].ToString();
 
                 // 연결 ID와 클라이언트 ID 매핑
                 string connectionId = Context.ConnectionId;
 
                 // 클라이언트 정보 저장 (서비스를 통해)
-                await _clientService.RegisterClientAsync(clientId, connectionId, latitude, longitude, gender);
+                clientId = await _clientService.RegisterClient(clientId, connectionId, latitude, longitude, gender);
+
+                // Context.Items에 ClientId 저장 (향후 사용을 위해)
+                Context.Items["ClientId"] = clientId;
 
                 // 클라이언트에게 등록 완료 알림
                 await Clients.Caller.SendAsync("Registered", new { clientId });
@@ -117,7 +120,6 @@ namespace WebServerMVC.Hubs
                 throw; // 클라이언트에게 오류 전파
             }
         }
-
         public async Task UpdateLocation(double latitude, double longitude)
         {
             var clientId = Context.Items["ClientId"] as string;
@@ -138,13 +140,23 @@ namespace WebServerMVC.Hubs
 
         public async Task JoinWaitingQueue(string gender)
         {
-            var clientId = Context.Items["ClientId"] as string;
-            if (!string.IsNullOrEmpty(clientId))
+            try
             {
-                await _matchingService.AddToWaitingQueue(clientId, Context.ConnectionId, gender);
+                var clientId = Context.Items["ClientId"] as string;
+                _logger.LogInformation($"Accessing ClientId from Context.Items: {clientId ?? "null"}");
+                if (!string.IsNullOrEmpty(clientId))
+                {
+                    await _matchingService.AddToWaitingQueue(clientId, Context.ConnectionId, gender);
 
-                // 매칭 프로세스 시작
-                await _matchingService.ProcessMatchingQueue();
+                    // 매칭 프로세스 시작
+                    await _matchingService.ProcessMatchingQueue();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"JoinWaitingQueue error: {ex.Message} | StackTrace: {ex.StackTrace}");
+                await Clients.Caller.SendAsync("JoinWaitingQueueError", ex.Message);
+                throw; // 클라이언트에게 오류 전파
             }
         }
 
