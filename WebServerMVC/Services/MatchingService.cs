@@ -112,6 +112,20 @@ namespace WebServerMVC.Services
             {
                 var partner = await _clientService.GetClientById(client.MatchedWithClientId);
 
+                // 활성 매칭 조회
+                var matches = await _matchRepository.GetMatchesByClientId(clientId);
+                var activeMatch = matches.FirstOrDefault(m =>
+                    m.EndedAt == null &&
+                    ((m.ClientId1 == clientId && m.ClientId2 == client.MatchedWithClientId) ||
+                     (m.ClientId2 == clientId && m.ClientId1 == client.MatchedWithClientId)));
+
+                // 활성 매칭이 있으면 종료 시간 업데이트
+                if (activeMatch != null)
+                {
+                    activeMatch.EndedAt = DateTime.UtcNow;
+                    await _matchRepository.UpdateMatch(activeMatch);
+                }
+
                 // 매칭 해제
                 client.IsMatched = false;
                 client.MatchedWithClientId = null;

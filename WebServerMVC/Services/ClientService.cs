@@ -51,11 +51,11 @@ namespace WebServerMVC.Services
 
             // Redis에 기본 정보 캐싱
             await _cache.SetStringAsync($"client:{newClient.ClientId}",
-                JsonSerializer.Serialize(newClient),
+                JsonSerializer.Serialize(newClient)/*,
                 new DistributedCacheEntryOptions
                 {
                     AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24)
-                });
+                }*/);
 
             return newClient.ClientId;
         }
@@ -84,11 +84,11 @@ namespace WebServerMVC.Services
 
                 // 캐시 업데이트
                 await _cache.SetStringAsync($"client:{clientId}",
-                    JsonSerializer.Serialize(client),
+                    JsonSerializer.Serialize(client)/*,
                     new DistributedCacheEntryOptions
                     {
                         AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24)
-                    });
+                    }*/);
             }
         }
         public async Task UpdateClientLocation(string clientId, double latitude, double longitude)
@@ -102,11 +102,11 @@ namespace WebServerMVC.Services
 
                 // 캐시 업데이트
                 await _cache.SetStringAsync($"client:{clientId}",
-                    JsonSerializer.Serialize(client),
+                    JsonSerializer.Serialize(client)/*,
                     new DistributedCacheEntryOptions
                     {
                         AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24)
-                    });
+                    }*/);
             }
         }
 
@@ -120,11 +120,11 @@ namespace WebServerMVC.Services
 
                 // 캐시 업데이트
                 await _cache.SetStringAsync($"client:{clientId}",
-                    JsonSerializer.Serialize(client),
+                    JsonSerializer.Serialize(client)/*,
                     new DistributedCacheEntryOptions
                     {
                         AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24)
-                    });
+                    }*/);
             }
         }
         public async Task UpdateClientMatchClientId(string clientId, string MatchedWithClientId)
@@ -137,11 +137,11 @@ namespace WebServerMVC.Services
 
                 // 캐시 업데이트
                 await _cache.SetStringAsync($"client:{clientId}",
-                    JsonSerializer.Serialize(client),
+                    JsonSerializer.Serialize(client)/*,
                     new DistributedCacheEntryOptions
                     {
                         AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24)
-                    });
+                    }*/);
             }
         }
         public async Task RemoveClient(string clientId)
@@ -162,11 +162,11 @@ namespace WebServerMVC.Services
 
             // Redis 캐시 업데이트
             await _cache.SetStringAsync($"client:{client.ClientId}",
-                JsonSerializer.Serialize(client),
+                JsonSerializer.Serialize(client)/*,
                 new DistributedCacheEntryOptions
                 {
                     AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24)
-                });
+                }*/);
         }
     }
 }
