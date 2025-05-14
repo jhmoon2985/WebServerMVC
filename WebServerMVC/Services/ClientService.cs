@@ -80,7 +80,7 @@ namespace WebServerMVC.Services
             // DB에서 조회
             return await _clientRepository.GetClientById(clientId);
         }
-        public async Task UpdateClientAll(string clientId, double latitude, double longitude, string gender)
+        public async Task UpdateClientAll(string clientId, double latitude, double longitude, string gender, bool IsMatched, string MatchedWithClientId)
         {
             var client = await GetClientById(clientId);
             if (client != null)
@@ -88,6 +88,8 @@ namespace WebServerMVC.Services
                 client.Latitude = latitude;
                 client.Longitude = longitude;
                 client.Gender = gender;
+                client.IsMatched = IsMatched;
+                client.MatchedWithClientId = MatchedWithClientId;
                 await _clientRepository.UpdateClient(client);
 
                 // 캐시 업데이트

@@ -7,7 +7,7 @@ namespace WebServerMVC.Services.Interfaces
     {
         Task<string> RegisterClient(string clientId, string connectionId, double latitude, double longitude, string gender);
         Task<Client> GetClientById(string clientId);
-        Task UpdateClientAll(string clientId, double latitude, double longitude, string gender);
+        Task UpdateClientAll(string clientId, double latitude, double longitude, string gender, bool IsMatched, string MatchedWithClientId);
         Task UpdateClientLocation(string clientId, double latitude, double longitude);
         Task UpdateClientGender(string clientId, string gender);
         Task UpdateClientMatchClientId(string clientId, string MatchedWithClientId);

@@ -39,7 +39,7 @@ namespace WebServerMVC.Services
                 client.IsMatched = false;
                 client.MatchedWithClientId = null;
 
-                await _clientService.UpdateClientAll(clientId, longitude, longitude, gender);
+                await _clientService.UpdateClientAll(clientId, latitude, longitude, gender, false, null);
                 //await _clientService.UpdateClientLocation(clientId, longitude, longitude);
                 //await _clientService.UpdateClientGender(clientId, gender);
                 _waitingQueue.Enqueue(clientId, connectionId, gender);
@@ -146,21 +146,8 @@ namespace WebServerMVC.Services
                     groupName = ChatUtilities.CreateChatGroupName(clientId, client.MatchedWithClientId);
                 }
 
-                // 매칭 해제
-                client.IsMatched = false;
-                client.MatchedWithClientId = null;
-
-                // 클라이언트 상태 DB와 캐시에 업데이트
-                await _clientService.UpdateClient(client);
-
                 if (partner != null)
                 {
-                    partner.IsMatched = false;
-                    partner.MatchedWithClientId = null;
-
-                    // 파트너 상태 DB와 캐시에 업데이트
-                    await _clientService.UpdateClient(partner);
-
                     // 파트너에게 매칭 종료 알림
                     await _hubContext.Clients.Client(partner.ConnectionId).SendAsync("MatchEnded");
 
