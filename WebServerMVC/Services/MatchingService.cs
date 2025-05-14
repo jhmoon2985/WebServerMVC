@@ -30,14 +30,17 @@ namespace WebServerMVC.Services
             _hubContext = hubContext;
         }
 
-        public async Task AddToWaitingQueue(string clientId, string connectionId, string gender)
+        public async Task AddToWaitingQueue(string clientId, string connectionId, double latitude, double longitude, string gender)
         {
             var client = await _clientService.GetClientById(clientId);
             if (client != null)
             {
                 client.IsMatched = false;
                 client.MatchedWithClientId = null;
-                await _clientService.UpdateClientGender(clientId, gender);
+
+                await _clientService.UpdateClientAll(clientId, longitude, longitude, gender);
+                //await _clientService.UpdateClientLocation(clientId, longitude, longitude);
+                //await _clientService.UpdateClientGender(clientId, gender);
                 _waitingQueue.Enqueue(clientId, connectionId, gender);
 
                 // 클라이언트에게 대기열 입장 알림
@@ -62,8 +65,10 @@ namespace WebServerMVC.Services
                 client2.IsMatched = true;
                 client2.MatchedWithClientId = clientId1;
 
-                await _clientService.UpdateClientLocation(clientId1, client1.Latitude, client1.Longitude);
-                await _clientService.UpdateClientLocation(clientId2, client2.Latitude, client2.Longitude);
+                await _clientService.UpdateClient(client1);
+                await _clientService.UpdateClient(client2);
+                //await _clientService.UpdateClientLocation(clientId1, client1.Latitude, client1.Longitude);
+                //await _clientService.UpdateClientLocation(clientId2, client2.Latitude, client2.Longitude);
 
                 // 거리 계산
                 var distance = _locationService.CalculateDistance(
@@ -120,7 +125,7 @@ namespace WebServerMVC.Services
                     await _hubContext.Clients.Client(partner.ConnectionId).SendAsync("MatchEnded");
 
                     // 파트너를 다시 대기열에 넣기
-                    await AddToWaitingQueue(partner.ClientId, partner.ConnectionId, partner.Gender);
+                    await AddToWaitingQueue(partner.ClientId, partner.ConnectionId, partner.Latitude, partner.Longitude, partner.Gender);
                 }
 
                 // 매칭 종료 및 그룹 제거

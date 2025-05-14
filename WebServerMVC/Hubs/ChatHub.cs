@@ -138,7 +138,7 @@ namespace WebServerMVC.Hubs
             }
         }
 
-        public async Task JoinWaitingQueue(string gender)
+        public async Task JoinWaitingQueue(double latitude, double longitude, string gender)
         {
             var clientId = Context.Items["ClientId"] as string;
             try
@@ -147,7 +147,7 @@ namespace WebServerMVC.Hubs
                 _logger.LogInformation($"Accessing ClientId from Context.Items: {clientId ?? "null"}");
                 if (!string.IsNullOrEmpty(clientId))
                 {
-                    await _matchingService.AddToWaitingQueue(clientId, Context.ConnectionId, gender);
+                    await _matchingService.AddToWaitingQueue(clientId, Context.ConnectionId, latitude, longitude, gender);
 
                     // 매칭 프로세스 시작
                     //await _matchingService.ProcessMatchingQueue();
@@ -195,7 +195,7 @@ namespace WebServerMVC.Hubs
                 var client = await _clientService.GetClientById(clientId);
                 if (client != null)
                 {
-                    await _matchingService.AddToWaitingQueue(clientId, Context.ConnectionId, client.Gender);
+                    await _matchingService.AddToWaitingQueue(clientId, Context.ConnectionId, client.Latitude, client.Longitude, client.Gender);
                     //await _matchingService.ProcessMatchingQueue();
                 }
             }

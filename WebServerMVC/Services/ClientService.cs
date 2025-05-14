@@ -72,7 +72,25 @@ namespace WebServerMVC.Services
             // DB에서 조회
             return await _clientRepository.GetClientById(clientId);
         }
+        public async Task UpdateClientAll(string clientId, double latitude, double longitude, string gender)
+        {
+            var client = await GetClientById(clientId);
+            if (client != null)
+            {
+                client.Latitude = latitude;
+                client.Longitude = longitude;
+                client.Gender = gender;
+                await _clientRepository.UpdateClient(client);
 
+                // 캐시 업데이트
+                await _cache.SetStringAsync($"client:{clientId}",
+                    JsonSerializer.Serialize(client),
+                    new DistributedCacheEntryOptions
+                    {
+                        AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24)
+                    });
+            }
+        }
         public async Task UpdateClientLocation(string clientId, double latitude, double longitude)
         {
             var client = await GetClientById(clientId);
@@ -109,7 +127,23 @@ namespace WebServerMVC.Services
                     });
             }
         }
+        public async Task UpdateClientMatchClientId(string clientId, string MatchedWithClientId)
+        {
+            var client = await GetClientById(clientId);
+            if (client != null)
+            {
+                client.MatchedWithClientId = MatchedWithClientId;
+                await _clientRepository.UpdateClient(client);
 
+                // 캐시 업데이트
+                await _cache.SetStringAsync($"client:{clientId}",
+                    JsonSerializer.Serialize(client),
+                    new DistributedCacheEntryOptions
+                    {
+                        AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24)
+                    });
+            }
+        }
         public async Task RemoveClient(string clientId)
         {
             await _clientRepository.DeleteClient(clientId);

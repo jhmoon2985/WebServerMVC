@@ -5,7 +5,7 @@ namespace WebServerMVC.Services.Interfaces
 {
     public interface IMatchingService
     {
-        Task AddToWaitingQueue(string clientId, string connectionId, string gender);
+        Task AddToWaitingQueue(string clientId, string connectionId, double latitude, double longitude, string gender);
         Task ProcessMatchingQueue();
         Task EndMatch(string clientId);
         Task<Client> GetMatchedClient(string clientId);
