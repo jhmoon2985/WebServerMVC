@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using Microsoft.Extensions.DependencyInjection;
+using WebServerMVC.Utilities;
 
 namespace WebServerMVC.Hubs
 {
@@ -172,7 +173,8 @@ namespace WebServerMVC.Hubs
                     var partner = await _clientService.GetClientById(client.MatchedWithClientId);
                     if (partner != null)
                     {
-                        string groupName = $"chat_{client.ClientId}_{partner.ClientId}";
+                        // 통일된 그룹 이름 생성 유틸리티 사용 그룹안에 있는 클라이언트 전부에 전송
+                        string groupName = ChatUtilities.CreateChatGroupName(client.ClientId, partner.ClientId);
                         await Clients.Group(groupName).SendAsync("ReceiveMessage", new
                         {
                             SenderId = clientId,

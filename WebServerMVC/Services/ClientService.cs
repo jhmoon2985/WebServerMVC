@@ -32,6 +32,14 @@ namespace WebServerMVC.Services
                     client.Longitude = longitude;
                     client.Gender = gender;
                     await _clientRepository.UpdateClient(client);
+
+                    // 캐시도 업데이트 - 기존 클라이언트 정보가 변경된 경우
+                    await _cache.SetStringAsync($"client:{client.ClientId}",
+                        JsonSerializer.Serialize(client)/*,
+                        new DistributedCacheEntryOptions
+                        {
+                            AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24)
+                        }*/);
                     return clientId;
                 }
             }

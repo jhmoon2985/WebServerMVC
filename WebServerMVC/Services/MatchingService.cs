@@ -5,6 +5,7 @@ using WebServerMVC.Models;
 using WebServerMVC.Repositories.Interfaces;
 using WebServerMVC.Services.Interfaces;
 using Microsoft.AspNetCore.SignalR;
+using WebServerMVC.Utilities;
 
 namespace WebServerMVC.Services
 {
@@ -75,31 +76,38 @@ namespace WebServerMVC.Services
                     client1.Latitude, client1.Longitude,
                     client2.Latitude, client2.Longitude);
 
+                // 그룹 이름 생성
+                string groupName = ChatUtilities.CreateChatGroupName(clientId1, clientId2);
+
                 // 매칭 기록 저장
-                await _matchRepository.AddMatch(new ClientMatch
+                var clientMatch = new ClientMatch
                 {
                     Id = Guid.NewGuid().ToString(),
                     ClientId1 = clientId1,
                     ClientId2 = clientId2,
                     MatchedAt = DateTime.UtcNow,
-                    Distance = distance
-                });
+                    Distance = distance,
+                    ChatGroupName = groupName // 그룹 이름 저장
+                };
+
+                await _matchRepository.AddMatch(clientMatch);
 
                 // 매칭된 클라이언트들에게 알림
                 await _hubContext.Clients.Client(connectionId1).SendAsync("Matched", new
                 {
                     PartnerGender = client2.Gender,
-                    Distance = distance
+                    Distance = distance,
+                    GroupName = groupName // 그룹 이름 전달 (선택적)
                 });
 
                 await _hubContext.Clients.Client(connectionId2).SendAsync("Matched", new
                 {
                     PartnerGender = client1.Gender,
-                    Distance = distance
+                    Distance = distance,
+                    GroupName = groupName // 그룹 이름 전달 (선택적)
                 });
 
                 // 그룹 생성
-                string groupName = $"chat_{clientId1}_{clientId2}";
                 await _hubContext.Groups.AddToGroupAsync(connectionId1, groupName);
                 await _hubContext.Groups.AddToGroupAsync(connectionId2, groupName);
             }
@@ -119,21 +127,39 @@ namespace WebServerMVC.Services
                     ((m.ClientId1 == clientId && m.ClientId2 == client.MatchedWithClientId) ||
                      (m.ClientId2 == clientId && m.ClientId1 == client.MatchedWithClientId)));
 
+                string groupName;
+
                 // 활성 매칭이 있으면 종료 시간 업데이트
                 if (activeMatch != null)
                 {
+                    // 저장된 그룹 이름 사용 (필드가 추가된 경우)
+                    groupName = !string.IsNullOrEmpty(activeMatch.ChatGroupName)
+                        ? activeMatch.ChatGroupName
+                        : ChatUtilities.CreateChatGroupName(clientId, client.MatchedWithClientId);
+
                     activeMatch.EndedAt = DateTime.UtcNow;
                     await _matchRepository.UpdateMatch(activeMatch);
+                }
+                else
+                {
+                    // 매칭 기록이 없는 경우 그룹 이름 새로 생성
+                    groupName = ChatUtilities.CreateChatGroupName(clientId, client.MatchedWithClientId);
                 }
 
                 // 매칭 해제
                 client.IsMatched = false;
                 client.MatchedWithClientId = null;
 
+                // 클라이언트 상태 DB와 캐시에 업데이트
+                await _clientService.UpdateClient(client);
+
                 if (partner != null)
                 {
                     partner.IsMatched = false;
                     partner.MatchedWithClientId = null;
+
+                    // 파트너 상태 DB와 캐시에 업데이트
+                    await _clientService.UpdateClient(partner);
 
                     // 파트너에게 매칭 종료 알림
                     await _hubContext.Clients.Client(partner.ConnectionId).SendAsync("MatchEnded");
@@ -145,7 +171,6 @@ namespace WebServerMVC.Services
                 // 매칭 종료 및 그룹 제거
                 if (!string.IsNullOrEmpty(client.ConnectionId) && partner != null)
                 {
-                    string groupName = $"chat_{client.ClientId}_{partner.ClientId}";
                     await _hubContext.Groups.RemoveFromGroupAsync(client.ConnectionId, groupName);
 
                     if (!string.IsNullOrEmpty(partner.ConnectionId))

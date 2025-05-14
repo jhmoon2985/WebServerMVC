@@ -10,5 +10,6 @@ namespace WebServerMVC.Models
         public DateTime MatchedAt { get; set; } = DateTime.UtcNow;
         public DateTime? EndedAt { get; set; } = null;
         public double Distance { get; set; } = 0;
+        public string ChatGroupName { get; set; } = string.Empty;
     }
 }
