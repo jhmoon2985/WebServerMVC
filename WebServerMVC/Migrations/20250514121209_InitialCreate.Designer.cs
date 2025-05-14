@@ -12,7 +12,7 @@ using WebServerMVC.Data;
 namespace WebServerMVC.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250508014356_InitialCreate")]
+    [Migration("20250514121209_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -53,6 +53,13 @@ namespace WebServerMVC.Migrations
                     b.Property<string>("MatchedWithClientId")
                         .HasColumnType("text");
 
+                    b.Property<int>("MaxDistance")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PreferredGender")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.HasKey("ClientId");
 
                     b.HasIndex("ConnectionId");
@@ -63,6 +70,10 @@ namespace WebServerMVC.Migrations
             modelBuilder.Entity("WebServerMVC.Models.ClientMatch", b =>
                 {
                     b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ChatGroupName")
+                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<string>("ClientId1")

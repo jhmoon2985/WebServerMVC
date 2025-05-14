@@ -31,7 +31,7 @@ namespace WebServerMVC.Services
             _hubContext = hubContext;
         }
 
-        public async Task AddToWaitingQueue(string clientId, string connectionId, double latitude, double longitude, string gender)
+        public async Task AddToWaitingQueue(string clientId, string connectionId, double latitude, double longitude, string gender, string preferredGender, int maxDistance)
         {
             var client = await _clientService.GetClientById(clientId);
             if (client != null)
@@ -42,7 +42,10 @@ namespace WebServerMVC.Services
                 await _clientService.UpdateClientAll(clientId, latitude, longitude, gender, false, null);
                 //await _clientService.UpdateClientLocation(clientId, longitude, longitude);
                 //await _clientService.UpdateClientGender(clientId, gender);
-                _waitingQueue.Enqueue(clientId, connectionId, gender);
+                //_waitingQueue.Enqueue(clientId, connectionId, gender);
+                // 수정된 WaitingQueue.Enqueue 메서드 호출
+                _waitingQueue.Enqueue(clientId, connectionId, gender, preferredGender, maxDistance, latitude, longitude);
+
 
                 // 클라이언트에게 대기열 입장 알림
                 await _hubContext.Clients.Client(connectionId).SendAsync("EnqueuedToWaiting");
@@ -51,68 +54,98 @@ namespace WebServerMVC.Services
 
         public async Task ProcessMatchingQueue()
         {
-            while (_waitingQueue.TryDequeueMatch(out var match))
+            var waitingClients = _waitingQueue.GetAllWaitingClients().ToList();
+
+            // 매칭 시도할 클라이언트들을 순회
+            for (int i = 0; i < waitingClients.Count; i++)
             {
-                var (clientId1, connectionId1, clientId2, connectionId2) = match;
+                var client = waitingClients[i];
 
-                var client1 = await _clientService.GetClientById(clientId1);
-                var client2 = await _clientService.GetClientById(clientId2);
-
-                if (client1 == null || client2 == null)
+                // 이미 처리된 클라이언트 건너뛰기
+                if (!_waitingQueue.TryRemoveClient(client.ClientId, out _))
                     continue;
 
-                client1.IsMatched = true;
-                client1.MatchedWithClientId = clientId2;
-                client2.IsMatched = true;
-                client2.MatchedWithClientId = clientId1;
-
-                await _clientService.UpdateClient(client1);
-                await _clientService.UpdateClient(client2);
-                //await _clientService.UpdateClientLocation(clientId1, client1.Latitude, client1.Longitude);
-                //await _clientService.UpdateClientLocation(clientId2, client2.Latitude, client2.Longitude);
-
-                // 거리 계산
-                var distance = _locationService.CalculateDistance(
-                    client1.Latitude, client1.Longitude,
-                    client2.Latitude, client2.Longitude);
-
-                // 그룹 이름 생성
-                string groupName = ChatUtilities.CreateChatGroupName(clientId1, clientId2);
-
-                // 매칭 기록 저장
-                var clientMatch = new ClientMatch
+                // 매칭 파트너 찾기
+                if (_waitingQueue.TryFindMatch(client, _locationService, out var partner))
                 {
-                    Id = Guid.NewGuid().ToString(),
-                    ClientId1 = clientId1,
-                    ClientId2 = clientId2,
-                    MatchedAt = DateTime.UtcNow,
-                    Distance = distance,
-                    ChatGroupName = groupName // 그룹 이름 저장
-                };
+                    // 파트너를 대기열에서 제거
+                    _waitingQueue.TryRemoveClient(partner.ClientId, out _);
 
-                await _matchRepository.AddMatch(clientMatch);
-
-                // 매칭된 클라이언트들에게 알림
-                await _hubContext.Clients.Client(connectionId1).SendAsync("Matched", new
+                    // 두 클라이언트 매칭 처리
+                    await MatchClients(client, partner);
+                }
+                else
                 {
-                    PartnerGender = client2.Gender,
-                    Distance = distance,
-                    GroupName = groupName // 그룹 이름 전달 (선택적)
-                });
-
-                await _hubContext.Clients.Client(connectionId2).SendAsync("Matched", new
-                {
-                    PartnerGender = client1.Gender,
-                    Distance = distance,
-                    GroupName = groupName // 그룹 이름 전달 (선택적)
-                });
-
-                // 그룹 생성
-                await _hubContext.Groups.AddToGroupAsync(connectionId1, groupName);
-                await _hubContext.Groups.AddToGroupAsync(connectionId2, groupName);
+                    // 매칭 파트너가 없으면 다시 대기열에 추가
+                    _waitingQueue.Enqueue(
+                        client.ClientId,
+                        client.ConnectionId,
+                        client.Gender,
+                        client.PreferredGender,
+                        client.MaxDistance,
+                        client.Latitude,
+                        client.Longitude);
+                }
             }
         }
+        private async Task MatchClients(WaitingClient client1, WaitingClient client2)
+        {
+            // DB에서 클라이언트 정보 가져오기
+            var dbClient1 = await _clientService.GetClientById(client1.ClientId);
+            var dbClient2 = await _clientService.GetClientById(client2.ClientId);
 
+            if (dbClient1 == null || dbClient2 == null)
+                return;
+
+            // 매칭 상태 업데이트
+            dbClient1.IsMatched = true;
+            dbClient1.MatchedWithClientId = client2.ClientId;
+            dbClient2.IsMatched = true;
+            dbClient2.MatchedWithClientId = client1.ClientId;
+
+            await _clientService.UpdateClient(dbClient1);
+            await _clientService.UpdateClient(dbClient2);
+
+            // 거리 계산
+            var distance = _locationService.CalculateDistance(
+                client1.Latitude, client1.Longitude,
+                client2.Latitude, client2.Longitude);
+
+            // 그룹 이름 생성
+            string groupName = ChatUtilities.CreateChatGroupName(client1.ClientId, client2.ClientId);
+
+            // 매칭 기록 저장
+            var clientMatch = new ClientMatch
+            {
+                Id = Guid.NewGuid().ToString(),
+                ClientId1 = client1.ClientId,
+                ClientId2 = client2.ClientId,
+                MatchedAt = DateTime.UtcNow,
+                Distance = distance,
+                ChatGroupName = groupName
+            };
+
+            await _matchRepository.AddMatch(clientMatch);
+
+            // 매칭된 클라이언트들에게 알림
+            await _hubContext.Clients.Client(client1.ConnectionId).SendAsync("Matched", new
+            {
+                PartnerGender = client2.Gender,
+                Distance = distance,
+                GroupName = groupName
+            });
+
+            await _hubContext.Clients.Client(client2.ConnectionId).SendAsync("Matched", new
+            {
+                PartnerGender = client1.Gender,
+                Distance = distance,
+                GroupName = groupName
+            });
+
+            // 그룹 생성
+            await _hubContext.Groups.AddToGroupAsync(client1.ConnectionId, groupName);
+            await _hubContext.Groups.AddToGroupAsync(client2.ConnectionId, groupName);
+        }
         public async Task EndMatch(string clientId)
         {
             var client = await _clientService.GetClientById(clientId);
@@ -152,7 +185,7 @@ namespace WebServerMVC.Services
                     await _hubContext.Clients.Client(partner.ConnectionId).SendAsync("MatchEnded");
 
                     // 파트너를 다시 대기열에 넣기
-                    await AddToWaitingQueue(partner.ClientId, partner.ConnectionId, partner.Latitude, partner.Longitude, partner.Gender);
+                    await AddToWaitingQueue(partner.ClientId, partner.ConnectionId, partner.Latitude, partner.Longitude, partner.Gender, partner.PreferredGender, partner.MaxDistance);
                 }
 
                 // 매칭 종료 및 그룹 제거
@@ -180,7 +213,7 @@ namespace WebServerMVC.Services
         }
         public Task RemoveFromWaitingQueue(string clientId)
         {
-            _waitingQueue.Remove(clientId);
+            _waitingQueue.TryRemoveClient(clientId, out _);
             return Task.CompletedTask;
         }
     }

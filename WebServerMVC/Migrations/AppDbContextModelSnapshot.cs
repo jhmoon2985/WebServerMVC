@@ -50,6 +50,13 @@ namespace WebServerMVC.Migrations
                     b.Property<string>("MatchedWithClientId")
                         .HasColumnType("text");
 
+                    b.Property<int>("MaxDistance")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PreferredGender")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.HasKey("ClientId");
 
                     b.HasIndex("ConnectionId");

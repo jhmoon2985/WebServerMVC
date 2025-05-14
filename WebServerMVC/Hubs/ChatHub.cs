@@ -100,11 +100,20 @@ namespace WebServerMVC.Hubs
                 if (info["gender"] != null)
                     gender = info["gender"].ToString();
 
+                string preferredGender = "any"; // 기본값
+                int maxDistance = 10000; // 기본값
+
+                if (info["preferredGender"] != null)
+                    preferredGender = info["preferredGender"].ToString();
+
+                if (info["maxDistance"] != null)
+                    maxDistance = info["maxDistance"].ToObject<int>();
+
                 // 연결 ID와 클라이언트 ID 매핑
                 string connectionId = Context.ConnectionId;
 
                 // 클라이언트 정보 저장 (서비스를 통해)
-                clientId = await _clientService.RegisterClient(clientId, connectionId, latitude, longitude, gender);
+                clientId = await _clientService.RegisterClient(clientId, connectionId, latitude, longitude, gender, preferredGender, maxDistance);
 
                 // Context.Items에 ClientId 저장 (향후 사용을 위해)
                 Context.Items["ClientId"] = clientId;
@@ -139,7 +148,16 @@ namespace WebServerMVC.Hubs
             }
         }
 
-        public async Task JoinWaitingQueue(double latitude, double longitude, string gender)
+        public async Task UpdatePreferences(string preferredGender, int maxDistance)
+        {
+            var clientId = Context.Items["ClientId"] as string;
+            if (!string.IsNullOrEmpty(clientId))
+            {
+                await _clientService.UpdateClientPreferences(clientId, preferredGender, maxDistance);
+            }
+        }
+
+        public async Task JoinWaitingQueue(double latitude, double longitude, string gender, string preferredGender, int maxDistance)
         {
             var clientId = Context.Items["ClientId"] as string;
             try
@@ -148,7 +166,7 @@ namespace WebServerMVC.Hubs
                 _logger.LogInformation($"Accessing ClientId from Context.Items: {clientId ?? "null"}");
                 if (!string.IsNullOrEmpty(clientId))
                 {
-                    await _matchingService.AddToWaitingQueue(clientId, Context.ConnectionId, latitude, longitude, gender);
+                    await _matchingService.AddToWaitingQueue(clientId, Context.ConnectionId, latitude, longitude, gender, preferredGender, maxDistance);
 
                     // 매칭 프로세스 시작
                     //await _matchingService.ProcessMatchingQueue();
@@ -197,7 +215,7 @@ namespace WebServerMVC.Hubs
                 var client = await _clientService.GetClientById(clientId);
                 if (client != null)
                 {
-                    await _matchingService.AddToWaitingQueue(clientId, Context.ConnectionId, client.Latitude, client.Longitude, client.Gender);
+                    await _matchingService.AddToWaitingQueue(clientId, Context.ConnectionId, client.Latitude, client.Longitude, client.Gender, client.PreferredGender, client.MaxDistance);
                     //await _matchingService.ProcessMatchingQueue();
                 }
             }

@@ -29,11 +29,11 @@ namespace WebServerMVC.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("Matching Background Service is starting.");
+            //_logger.LogInformation("Matching Background Service is starting.");
 
             while (!stoppingToken.IsCancellationRequested)
             {
-                _logger.LogDebug("Matching process running at: {time}", DateTimeOffset.Now);
+                //_logger.LogDebug("Matching process running at: {time}", DateTimeOffset.Now);
 
                 try
                 {
@@ -51,7 +51,7 @@ namespace WebServerMVC.Services
                 await Task.Delay(TimeSpan.FromSeconds(_intervalSeconds), stoppingToken);
             }
 
-            _logger.LogInformation("Matching Background Service is stopping.");
+            //_logger.LogInformation("Matching Background Service is stopping.");
         }
     }
 }

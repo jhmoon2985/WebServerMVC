@@ -60,13 +60,17 @@ namespace WebServerMVC.Controllers
             double latitude = 35.5642135;
             double longitude = 127.0016985;
             string gender = "male"; // 기본값
+            string PreferredGender = "any";
+            int MaxDistance = 10000;
 
             string clientId = await _clientService.RegisterClient(
                 request.ExistingClientId,
                 request.ConnectionId,
                 latitude,
                 longitude,
-                gender);
+                gender,
+                PreferredGender,
+                MaxDistance);
 
             return Ok(new { ClientId = clientId });
         }
@@ -78,6 +82,20 @@ namespace WebServerMVC.Controllers
 
             return Ok();
         }
+        // Controllers/ApiController.cs에 엔드포인트 추가
+        [HttpPost("client/{clientId}/preferences")]
+        public async Task<IActionResult> UpdatePreferences(string clientId, [FromBody] UpdatePreferencesRequest request)
+        {
+            await _clientService.UpdateClientPreferences(clientId, request.PreferredGender, request.MaxDistance);
+            return Ok();
+        }
+
+        // ApiController.cs에 새로운 요청 모델 추가
+        public class UpdatePreferencesRequest
+        {
+            public string PreferredGender { get; set; } = "any";
+            public int MaxDistance { get; set; } = 10000;
+        }
     }
 
     public class RegisterClientRequest
@@ -87,6 +105,8 @@ namespace WebServerMVC.Controllers
         public double Latitude { get; set; } = 37.5642135;  // 기본값 설정
         public double Longitude { get; set; } = 127.0016985;  // 기본값 설정
         public string Gender { get; set; } = "male";  // 기본값 설정
+        public string PreferredGender { get; set; } = "any";
+        public int MaxDistance { get; set; } = 10000;
     }
 
     public class UpdateLocationRequest

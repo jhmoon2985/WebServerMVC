@@ -22,7 +22,9 @@ namespace WebServerMVC.Migrations
                     Latitude = table.Column<double>(type: "double precision", nullable: false),
                     Longitude = table.Column<double>(type: "double precision", nullable: false),
                     IsMatched = table.Column<bool>(type: "boolean", nullable: false),
-                    MatchedWithClientId = table.Column<string>(type: "text", nullable: true)
+                    MatchedWithClientId = table.Column<string>(type: "text", nullable: true),
+                    PreferredGender = table.Column<string>(type: "text", nullable: false),
+                    MaxDistance = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -38,7 +40,8 @@ namespace WebServerMVC.Migrations
                     ClientId2 = table.Column<string>(type: "text", nullable: false),
                     MatchedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     EndedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    Distance = table.Column<double>(type: "double precision", nullable: false)
+                    Distance = table.Column<double>(type: "double precision", nullable: false),
+                    ChatGroupName = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {

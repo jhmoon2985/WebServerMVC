@@ -12,5 +12,8 @@ namespace WebServerMVC.Models
         public double Longitude { get; set; } = 0;
         public bool IsMatched { get; set; } = false;
         public string? MatchedWithClientId { get; set; } = null;
+        // 매칭 선호도 필드 추가
+        public string PreferredGender { get; set; } = "any"; // "male", "female", "any"
+        public int MaxDistance { get; set; } = 10000; // 킬로미터 단위
     }
 }

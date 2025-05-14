@@ -19,7 +19,7 @@ namespace WebServerMVC.Services
             _cache = cache;
         }
 
-        public async Task<string> RegisterClient(string clientId, string connectionId, double latitude, double longitude, string gender)
+        public async Task<string> RegisterClient(string clientId, string connectionId, double latitude, double longitude, string gender, string preferredGender, int maxDistance)
         {
             if (!string.IsNullOrEmpty(clientId))
             {
@@ -31,6 +31,8 @@ namespace WebServerMVC.Services
                     client.Latitude = latitude;
                     client.Longitude = longitude;
                     client.Gender = gender;
+                    client.PreferredGender = preferredGender;
+                    client.MaxDistance = maxDistance;
                     await _clientRepository.UpdateClient(client);
 
                     // 캐시도 업데이트 - 기존 클라이언트 정보가 변경된 경우
@@ -52,7 +54,9 @@ namespace WebServerMVC.Services
                 Latitude = latitude,
                 Longitude = longitude,
                 Gender = gender,
-                IsMatched = false
+                IsMatched = false,
+                PreferredGender = "any", // 기본값
+                MaxDistance = 10000 // 기본값 (km)
             };
 
             await _clientRepository.AddClient(newClient);
@@ -143,6 +147,24 @@ namespace WebServerMVC.Services
             if (client != null)
             {
                 client.MatchedWithClientId = MatchedWithClientId;
+                await _clientRepository.UpdateClient(client);
+
+                // 캐시 업데이트
+                await _cache.SetStringAsync($"client:{clientId}",
+                    JsonSerializer.Serialize(client)/*,
+                    new DistributedCacheEntryOptions
+                    {
+                        AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24)
+                    }*/);
+            }
+        }
+        public async Task UpdateClientPreferences(string clientId, string preferredGender, int maxDistance)
+        {
+            var client = await GetClientById(clientId);
+            if (client != null)
+            {
+                client.PreferredGender = preferredGender;
+                client.MaxDistance = maxDistance;
                 await _clientRepository.UpdateClient(client);
 
                 // 캐시 업데이트

@@ -39,6 +39,18 @@
                             <td>위도: @Model.Latitude, 경도: @Model.Longitude</td>
                         </tr>
                         <tr>
+                            <th>매칭 선호 성별</th>
+                            <td>
+                                @(string.IsNullOrEmpty(Model.PreferredGender) || Model.PreferredGender == "any"
+                                                                ? "제한 없음"
+                                                                : (Model.PreferredGender.ToLower() == "male" ? "남성만" : "여성만"))
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>최대 매칭 거리</th>
+                            <td>@Model.MaxDistance km</td>
+                        </tr>
+                        <tr>
                             <th>상태</th>
                             <td>
                                 @if (string.IsNullOrEmpty(Model.ConnectionId))
@@ -152,7 +164,7 @@
             @if (Model.IsMatched && matchedClient != null)
                 {
                     <text>
-                        // 매칭된 클라이언트 마커 추가
+                                                        // 매칭된 클라이언트 마커 추가
                         var matchedLocation = [@matchedClient.Latitude, @matchedClient.Longitude];
                         var matchedMarker = L.marker(matchedLocation).addTo(map);
                         matchedMarker.bindPopup('매칭된 클라이언트 위치');
@@ -165,7 +177,7 @@
                         var polyline = L.polyline([clientLocation, matchedLocation], {color: 'red'}).addTo(map);
                     </text>
             }
-            }
+                            }
 
         // 지도 로드
         window.onload = initMap;

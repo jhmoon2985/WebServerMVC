@@ -12,6 +12,6 @@
         public int MatchProcessingIntervalSeconds { get; set; } = 5;
         public int MaxWaitingTimeMinutes { get; set; } = 30;
         public bool EnableGeoMatching { get; set; } = true;
-        public int MaxDistanceKm { get; set; } = 100;
+        public int MaxDistanceKm { get; set; } = 10000;
     }
 }
