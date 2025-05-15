@@ -203,6 +203,40 @@ namespace WebServerMVC.Hubs
                 }
             }
         }
+        // Hubs/ChatHub.cs에 추가
+        public async Task SendImageMessage(string imageId)
+        {
+            var clientId = Context.Items["ClientId"] as string;
+            if (!string.IsNullOrEmpty(clientId))
+            {
+                var client = await _clientService.GetClientById(clientId);
+                if (client != null && client.IsMatched && !string.IsNullOrEmpty(client.MatchedWithClientId))
+                {
+                    var partner = await _clientService.GetClientById(client.MatchedWithClientId);
+                    if (partner != null)
+                    {
+                        // 이미지 정보 가져오기
+                        var imageService = Context.GetHttpContext().RequestServices.GetRequiredService<IImageService>();
+                        var imageBytes = await imageService.GetImageBytes(imageId);
+                        var thumbnailBytes = await imageService.GetThumbnailBytes(imageId);
+
+                        if (imageBytes != null && thumbnailBytes != null)
+                        {
+                            // 통일된 그룹 이름 생성 유틸리티 사용
+                            string groupName = ChatUtilities.CreateChatGroupName(client.ClientId, partner.ClientId);
+                            await Clients.Group(groupName).SendAsync("ReceiveImageMessage", new
+                            {
+                                SenderId = clientId,
+                                ImageId = imageId,
+                                ThumbnailUrl = $"/api/image/{imageId}/thumbnail",
+                                ImageUrl = $"/api/image/{imageId}",
+                                Timestamp = DateTime.UtcNow
+                            });
+                        }
+                    }
+                }
+            }
+        }
 
         public async Task EndChat()
         {

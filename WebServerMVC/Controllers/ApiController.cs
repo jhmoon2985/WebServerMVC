@@ -2,6 +2,12 @@
 using Microsoft.AspNetCore.Mvc;
 using WebServerMVC.Models;
 using WebServerMVC.Services.Interfaces;
+using Microsoft.AspNetCore.SignalR;
+using WebServerMVC.Hubs;
+using WebServerMVC.Utilities;
+using Microsoft.AspNetCore.Http;
+using System;
+using System.IO;
 
 namespace WebServerMVC.Controllers
 {
@@ -11,13 +17,19 @@ namespace WebServerMVC.Controllers
     {
         private readonly IClientService _clientService;
         private readonly IMatchingService _matchingService;
+        private readonly IImageService _imageService;
+        private readonly IHubContext<ChatHub> _hubContext;
 
         public ApiController(
             IClientService clientService,
-            IMatchingService matchingService)
+            IMatchingService matchingService,
+            IImageService imageService,
+            IHubContext<ChatHub> hubContext)
         {
             _clientService = clientService;
             _matchingService = matchingService;
+            _imageService = imageService;
+            _hubContext = hubContext;
         }
 
         [HttpGet("client/{clientId}")]
@@ -82,12 +94,93 @@ namespace WebServerMVC.Controllers
 
             return Ok();
         }
-        // Controllers/ApiController.cs에 엔드포인트 추가
+
         [HttpPost("client/{clientId}/preferences")]
         public async Task<IActionResult> UpdatePreferences(string clientId, [FromBody] UpdatePreferencesRequest request)
         {
             await _clientService.UpdateClientPreferences(clientId, request.PreferredGender, request.MaxDistance);
             return Ok();
+        }
+
+        // 이미지 업로드 엔드포인트
+        [HttpPost("client/{clientId}/image")]
+        public async Task<IActionResult> UploadImage(string clientId, IFormFile image)
+        {
+            if (image == null || image.Length == 0)
+            {
+                return BadRequest(new { message = "이미지 파일이 없습니다." });
+            }
+
+            var client = await _clientService.GetClientById(clientId);
+            if (client == null)
+            {
+                return NotFound(new { message = "클라이언트를 찾을 수 없습니다." });
+            }
+
+            if (!client.IsMatched || string.IsNullOrEmpty(client.MatchedWithClientId))
+            {
+                return BadRequest(new { message = "매칭된 상대가 없습니다." });
+            }
+
+            try
+            {
+                // 이미지 서비스를 통해 이미지 저장
+                var imageMessage = await _imageService.SaveImage(clientId, client.MatchedWithClientId, image);
+
+                // 상대방에게 이미지 메시지 전송
+                var partner = await _clientService.GetClientById(client.MatchedWithClientId);
+                if (partner != null && !string.IsNullOrEmpty(partner.ConnectionId))
+                {
+                    string groupName = ChatUtilities.CreateChatGroupName(clientId, client.MatchedWithClientId);
+                    await _hubContext.Clients.Group(groupName).SendAsync("ReceiveImageMessage", new
+                    {
+                        SenderId = clientId,
+                        ImageId = imageMessage.Id,
+                        ThumbnailUrl = imageMessage.ThumbnailUrl,
+                        ImageUrl = imageMessage.FileUrl,
+                        Timestamp = DateTime.UtcNow
+                    });
+                }
+
+                return Ok(new
+                {
+                    imageId = imageMessage.Id,
+                    thumbnailUrl = imageMessage.ThumbnailUrl,
+                    imageUrl = imageMessage.FileUrl
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"이미지 업로드 오류: {ex.Message}" });
+            }
+        }
+
+        // 이미지 조회 엔드포인트
+        [HttpGet("image/{imageId}")]
+        public async Task<IActionResult> GetImage(string imageId)
+        {
+            var imageBytes = await _imageService.GetImageBytes(imageId);
+
+            if (imageBytes == null)
+            {
+                return NotFound(new { message = "이미지를 찾을 수 없습니다." });
+            }
+
+            return File(imageBytes, "image/jpeg"); // 실제 이미지 타입에 맞게 조정 필요
+        }
+
+        // 썸네일 조회 엔드포인트
+        [HttpGet("image/{imageId}/thumbnail")]
+        public async Task<IActionResult> GetThumbnail(string imageId)
+        {
+            var thumbnailBytes = await _imageService.GetThumbnailBytes(imageId);
+
+            if (thumbnailBytes == null)
+            {
+                return NotFound(new { message = "썸네일을 찾을 수 없습니다." });
+            }
+
+            return File(thumbnailBytes, "image/jpeg");
         }
 
         // ApiController.cs에 새로운 요청 모델 추가

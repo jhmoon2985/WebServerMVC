@@ -33,6 +33,7 @@ builder.Services.AddScoped<IMatchRepository, MatchRepository>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IMatchingService, MatchingService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
+builder.Services.AddScoped<IImageService, ImageService>();
 
 // ���� ���ε�
 builder.Services.Configure<ClientSettings>(builder.Configuration.GetSection("ClientSettings"));
@@ -100,5 +101,17 @@ using (var scope = app.Services.CreateScope())
         logger.LogError(ex, "�����ͺ��̽� ���̱׷��̼� �Ǵ� �õ� ������ �ʱ�ȭ �� ������ �߻��߽��ϴ�.");
     }
 }
+
+// 이미지 저장 디렉토리 확인 및 생성
+var uploadsDir = Path.Combine(app.Environment.WebRootPath, "uploads");
+var imagesDir = Path.Combine(uploadsDir, "images");
+var thumbnailsDir = Path.Combine(uploadsDir, "thumbnails");
+
+if (!Directory.Exists(uploadsDir))
+    Directory.CreateDirectory(uploadsDir);
+if (!Directory.Exists(imagesDir))
+    Directory.CreateDirectory(imagesDir);
+if (!Directory.Exists(thumbnailsDir))
+    Directory.CreateDirectory(thumbnailsDir);
 
 app.Run();
