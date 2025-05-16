@@ -200,5 +200,13 @@ namespace WebServerMVC.Services
                     AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24)
                 }*/);
         }
+        public async Task UpdateClientAndClearCache(Client client)
+        {
+            // DB만 업데이트
+            await _clientRepository.UpdateClient(client);
+            
+            // Redis 캐시에서 삭제
+            await _cache.RemoveAsync($"client:{client.ClientId}");
+        }
     }
 }

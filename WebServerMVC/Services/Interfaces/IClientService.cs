@@ -16,5 +16,6 @@ namespace WebServerMVC.Services.Interfaces
         // IClientService.cs에 다음 메서드 추가
         Task<List<Client>> GetAllClients();
         Task UpdateClient(Client client);
+        Task UpdateClientAndClearCache(Client client);
     }
 }

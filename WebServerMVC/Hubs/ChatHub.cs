@@ -58,7 +58,8 @@ namespace WebServerMVC.Hubs
                     try
                     {
                         // UpdateClient 메서드로 변경하여 모든 상태를 한번에 업데이트
-                        await _clientService.UpdateClient(client);
+                        //await _clientService.UpdateClient(client);
+                        await _clientService.UpdateClientAndClearCache(client);
                         //_logger.LogInformation($"Client {clientId} disconnected and state updated in database.");
                     }
                     catch (Exception ex)
