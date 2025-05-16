@@ -41,5 +41,12 @@ namespace WebServerMVC.Repositories
             _context.Matches.Update(match);
             await _context.SaveChangesAsync();
         }
+        public async Task<List<ClientMatch>> GetRecentMatches(int count)
+        {
+            return await _context.Matches
+                .OrderByDescending(m => m.MatchedAt)
+                .Take(count)
+                .ToListAsync();
+        }
     }
 }

@@ -1,0 +1,80 @@
+﻿@model ClientMessageViewModel
+@{
+    ViewData["Title"] = "클라이언트 메시지";
+}
+
+<div class="container">
+    <div class="mb-3">
+        <a asp-action="Messages" class="btn btn-outline-secondary">← 메시지 관리로</a>
+    </div>
+
+    <h1>클라이언트 메시지</h1>
+    <p>클라이언트 ID: @Model.Client.ClientId</p>
+
+    <div class="card">
+        <div class="card-header">
+            <h5>메시지 목록</h5>
+        </div>
+        <div class="card-body">
+            @if (Model.Messages.Count == 0)
+            {
+                <div class="alert alert-info">메시지가 없습니다.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>매치 ID</th>
+                                <th>내용</th>
+                                <th>전송 시간</th>
+                                <th>유형</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var message in Model.Messages.OrderByDescending(m => m.SentAt))
+                            {
+                                <tr>
+                                    <td>@message.Id.Substring(0, 8)...</td>
+                                    <td>
+                                        <a asp-action="MatchMessages" asp-route-matchId="@message.MatchId">
+                                            @message.MatchId.Substring(0, 8)...
+                                        </a>
+                                    </td>
+                                    <td>
+                                        @if (message.Content.StartsWith("[IMAGE:"))
+                                        {
+                                            var imageId = message.Content.Replace("[IMAGE:", "").Replace("]", "");
+                                            <div>
+                                                <a href="/api/image/@imageId" target="_blank">
+                                                    <img src="/api/image/@imageId/thumbnail" alt="이미지" style="max-width: 100px;" />
+                                                </a>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            @message.Content
+                                        }
+                                    </td>
+                                    <td>@message.SentAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                    <td>
+                                        @if (message.SenderId == Model.Client.ClientId)
+                                        {
+                                            <span class="badge bg-primary">보낸 메시지</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success">받은 메시지</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>

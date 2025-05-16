@@ -34,6 +34,7 @@ builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IMatchingService, MatchingService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddScoped<IImageService, ImageService>();
+builder.Services.AddScoped<IMessageService, MessageService>();
 
 // ���� ���ε�
 builder.Services.Configure<ClientSettings>(builder.Configuration.GetSection("ClientSettings"));
@@ -106,6 +107,8 @@ using (var scope = app.Services.CreateScope())
 var uploadsDir = Path.Combine(app.Environment.WebRootPath, "uploads");
 var imagesDir = Path.Combine(uploadsDir, "images");
 var thumbnailsDir = Path.Combine(uploadsDir, "thumbnails");
+var clientsDir = Path.Combine(uploadsDir, "clients");
+var messagesDir = Path.Combine(uploadsDir, "messages"); // 추가
 
 if (!Directory.Exists(uploadsDir))
     Directory.CreateDirectory(uploadsDir);
@@ -113,5 +116,9 @@ if (!Directory.Exists(imagesDir))
     Directory.CreateDirectory(imagesDir);
 if (!Directory.Exists(thumbnailsDir))
     Directory.CreateDirectory(thumbnailsDir);
+if (!Directory.Exists(clientsDir))
+    Directory.CreateDirectory(clientsDir);
+if (!Directory.Exists(messagesDir))
+    Directory.CreateDirectory(messagesDir);
 
 app.Run();

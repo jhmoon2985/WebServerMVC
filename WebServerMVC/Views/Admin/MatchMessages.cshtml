@@ -1,0 +1,68 @@
+﻿@model MatchMessageViewModel
+@{
+    ViewData["Title"] = "매치 메시지";
+}
+
+<div class="container">
+    <div class="mb-3">
+        <a asp-action="Messages" class="btn btn-outline-secondary">← 메시지 관리로</a>
+    </div>
+
+    <h1>매치 메시지</h1>
+    <p>매치 ID: @Model.MatchId</p>
+
+    <div class="card">
+        <div class="card-header">
+            <h5>메시지 목록</h5>
+        </div>
+        <div class="card-body">
+            @if (Model.Messages.Count == 0)
+            {
+                <div class="alert alert-info">메시지가 없습니다.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>보낸 사람</th>
+                                <th>내용</th>
+                                <th>전송 시간</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var message in Model.Messages.OrderBy(m => m.SentAt))
+                            {
+                                <tr>
+                                    <td>
+                                        <a asp-action="Details" asp-route-id="@message.SenderId">
+                                            @(Model.ClientNames.ContainsKey(message.SenderId) ?
+                                                                                Model.ClientNames[message.SenderId] : message.SenderId.Substring(0, 8))
+                                </a>
+                            </td>
+                            <td>
+                                @if (message.Content.StartsWith("[IMAGE:"))
+                                        {
+                                            var imageId = message.Content.Replace("[IMAGE:", "").Replace("]", "");
+                                            <div>
+                                                <a href="/api/image/@imageId" target="_blank">
+                                                    <img src="/api/image/@imageId/thumbnail" alt="이미지" style="max-width: 100px;" />
+                                                </a>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            @message.Content
+                                        }
+                                    </td>
+                                    <td>@message.SentAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>

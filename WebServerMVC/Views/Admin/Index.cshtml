@@ -72,10 +72,11 @@
                             <tr>
                                 <td>@client.ClientId.Substring(0, 8)...</td>
                                 <td>@client.ConnectedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
-                                <td>@(string.IsNullOrEmpty(client.Gender) ? "미설정" : (client.Gender.ToLower() == "male" ? "남성" : "여성"))</td>
-                                <td>@client.Latitude, @client.Longitude</td>
-                                <td>
-                                    @if (string.IsNullOrEmpty(client.ConnectionId))
+                                <td>@(string.IsNullOrEmpty(client.Gender) ? "미설정" : (client.Gender.ToLower() == "male" ?
+                                                                    "남성" : "여성"))</td>
+                            <td>@client.Latitude, @client.Longitude</td>
+                            <td>
+                                @if (string.IsNullOrEmpty(client.ConnectionId))
                                     {
                                         <span class="badge bg-secondary">오프라인</span>
                                     }
@@ -89,7 +90,10 @@
                                     }
                                 </td>
                                 <td>
-                                    <a asp-action="Details" asp-route-id="@client.ClientId" class="btn btn-sm btn-primary">상세</a>
+                                    <a asp-action="Details" asp-route-id="@client.ClientId"
+                                        class="btn btn-sm btn-primary">상세</a>
+                                    <a asp-action="ClientMessages" asp-route-clientId="@client.ClientId"
+                                        class="btn btn-sm btn-info">메시지</a>
                                 </td>
                             </tr>
                         }
@@ -103,7 +107,7 @@
 @section Scripts {
     <script>
         // 페이지 자동 새로고침 (30초마다)
-        setTimeout(function() {
+        setTimeout(function () {
             location.reload();
         }, 30000);
     </script>

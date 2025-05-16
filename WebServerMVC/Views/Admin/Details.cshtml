@@ -7,6 +7,7 @@
 <div class="container">
     <div class="mb-3">
         <a asp-action="Index" class="btn btn-outline-secondary">← 목록으로</a>
+        <a asp-action="ClientMessages" asp-route-clientId="@Model.ClientId" class="btn btn-outline-info">메시지 보기</a>
     </div>
 
     <div class="row">
@@ -164,7 +165,7 @@
             @if (Model.IsMatched && matchedClient != null)
                 {
                     <text>
-                                                        // 매칭된 클라이언트 마커 추가
+                                                                // 매칭된 클라이언트 마커 추가
                         var matchedLocation = [@matchedClient.Latitude, @matchedClient.Longitude];
                         var matchedMarker = L.marker(matchedLocation).addTo(map);
                         matchedMarker.bindPopup('매칭된 클라이언트 위치');
@@ -177,7 +178,7 @@
                         var polyline = L.polyline([clientLocation, matchedLocation], {color: 'red'}).addTo(map);
                     </text>
             }
-                            }
+                                }
 
         // 지도 로드
         window.onload = initMap;

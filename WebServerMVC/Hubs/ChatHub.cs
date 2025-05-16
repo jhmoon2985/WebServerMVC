@@ -16,14 +16,18 @@ namespace WebServerMVC.Hubs
         private readonly IClientService _clientService;
         private readonly IMatchingService _matchingService;
         private readonly ILogger<ChatHub> _logger;
+        private readonly IMessageService _messageService;
+
 
         public ChatHub(
             IClientService clientService,
             IMatchingService matchingService,
+            IMessageService messageService,
             ILogger<ChatHub> logger)
         {
             _clientService = clientService;
             _matchingService = matchingService;
+            _messageService = messageService;
             _logger = logger;
         }
 
@@ -193,6 +197,9 @@ namespace WebServerMVC.Hubs
                     {
                         // 통일된 그룹 이름 생성 유틸리티 사용 그룹안에 있는 클라이언트 전부에 전송
                         string groupName = ChatUtilities.CreateChatGroupName(client.ClientId, partner.ClientId);
+                        // 텍스트 메시지 저장
+                        await _messageService.SaveTextMessage(clientId, groupName, message);
+
                         await Clients.Group(groupName).SendAsync("ReceiveMessage", new
                         {
                             SenderId = clientId,

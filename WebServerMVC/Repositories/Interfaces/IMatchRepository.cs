@@ -10,5 +10,6 @@ namespace WebServerMVC.Repositories.Interfaces
         Task<List<ClientMatch>> GetMatchesByClientId(string clientId);
         Task AddMatch(ClientMatch match);
         Task UpdateMatch(ClientMatch match);
+        Task<List<ClientMatch>> GetRecentMatches(int count);
     }
 }

@@ -5,9 +5,7 @@ using WebServerMVC.Services.Interfaces;
 using Microsoft.AspNetCore.SignalR;
 using WebServerMVC.Hubs;
 using WebServerMVC.Utilities;
-using Microsoft.AspNetCore.Http;
-using System;
-using System.IO;
+using WebServerMVC.Repositories.Interfaces;
 
 namespace WebServerMVC.Controllers
 {
@@ -18,17 +16,23 @@ namespace WebServerMVC.Controllers
         private readonly IClientService _clientService;
         private readonly IMatchingService _matchingService;
         private readonly IImageService _imageService;
+        private readonly IMessageService _messageService;
+        private readonly IMatchRepository _matchRepository;
         private readonly IHubContext<ChatHub> _hubContext;
 
         public ApiController(
             IClientService clientService,
             IMatchingService matchingService,
             IImageService imageService,
+            IMessageService messageService,
+            IMatchRepository matchRepository,
             IHubContext<ChatHub> hubContext)
         {
             _clientService = clientService;
             _matchingService = matchingService;
             _imageService = imageService;
+            _messageService = messageService;
+            _matchRepository = matchRepository;
             _hubContext = hubContext;
         }
 
@@ -59,7 +63,24 @@ namespace WebServerMVC.Controllers
                 PartnerClientId = matchedClient.ClientId
             });
         }
+        // 최근 매치 목록 가져오기
+        [HttpGet("matches/recent")]
+        public async Task<IActionResult> GetRecentMatches()
+        {
+            try
+            {
+                // 최근 매치 10개 가져오기
+                // 이를 위해 MatchRepository에 GetRecentMatches 메서드 추가 필요
+                var matchRepository = HttpContext.RequestServices.GetRequiredService<IMatchRepository>();
+                var recentMatches = await matchRepository.GetRecentMatches(10);
 
+                return Ok(recentMatches);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"매치 목록 조회 오류: {ex.Message}" });
+            }
+        }
         [HttpPost("client/register")]
         public async Task<IActionResult> RegisterClient([FromBody] RegisterClientRequest request)
         {
@@ -127,11 +148,15 @@ namespace WebServerMVC.Controllers
                 // 이미지 서비스를 통해 이미지 저장
                 var imageMessage = await _imageService.SaveImage(clientId, client.MatchedWithClientId, image);
 
+                // 이미지 메시지 정보도 저장
+                string groupName = ChatUtilities.CreateChatGroupName(clientId, client.MatchedWithClientId);
+                // 메시지 저장 (이미지 메시지)
+                await _messageService.SaveTextMessage(clientId, groupName, $"[IMAGE:{imageMessage.Id}]");
+
                 // 상대방에게 이미지 메시지 전송
                 var partner = await _clientService.GetClientById(client.MatchedWithClientId);
                 if (partner != null && !string.IsNullOrEmpty(partner.ConnectionId))
                 {
-                    string groupName = ChatUtilities.CreateChatGroupName(clientId, client.MatchedWithClientId);
                     await _hubContext.Clients.Group(groupName).SendAsync("ReceiveImageMessage", new
                     {
                         SenderId = clientId,
