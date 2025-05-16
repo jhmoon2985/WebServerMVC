@@ -94,7 +94,7 @@ using (var scope = app.Services.CreateScope())
         await DbInitializer.SeedData(context);
 
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogInformation("�����ͺ��̽� ���̱׷��̼� �� �õ� ������ �ʱ�ȭ�� �Ϸ�Ǿ����ϴ�.");
+        //logger.LogInformation("�����ͺ��̽� ���̱׷��̼� �� �õ� ������ �ʱ�ȭ�� �Ϸ�Ǿ����ϴ�.");
     }
     catch (Exception ex)
     {

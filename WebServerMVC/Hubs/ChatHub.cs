@@ -34,7 +34,7 @@ namespace WebServerMVC.Hubs
         public override async Task OnConnectedAsync()
         {
             await base.OnConnectedAsync();
-            _logger.LogInformation($"Client connected: {Context.ConnectionId}");
+            //_logger.LogInformation($"Client connected: {Context.ConnectionId}");
         }
 
         public override async Task OnDisconnectedAsync(Exception exception)
@@ -59,7 +59,7 @@ namespace WebServerMVC.Hubs
                     {
                         // UpdateClient 메서드로 변경하여 모든 상태를 한번에 업데이트
                         await _clientService.UpdateClient(client);
-                        _logger.LogInformation($"Client {clientId} disconnected and state updated in database.");
+                        //_logger.LogInformation($"Client {clientId} disconnected and state updated in database.");
                     }
                     catch (Exception ex)
                     {
@@ -72,7 +72,7 @@ namespace WebServerMVC.Hubs
             }
 
             await base.OnDisconnectedAsync(exception);
-            _logger.LogInformation($"Client disconnected: {Context.ConnectionId}");
+            //_logger.LogInformation($"Client disconnected: {Context.ConnectionId}");
         }
 
         public async Task Register(object registrationInfo)
@@ -125,7 +125,7 @@ namespace WebServerMVC.Hubs
                 // 클라이언트에게 등록 완료 알림
                 await Clients.Caller.SendAsync("Registered", new { clientId });
 
-                _logger.LogInformation($"Client registered: {clientId}, ConnectionId: {connectionId}, Gender: {gender}");
+                //_logger.LogInformation($"Client registered: {clientId}, ConnectionId: {connectionId}, Gender: {gender}");
             }
             catch (Exception ex)
             {
@@ -167,7 +167,7 @@ namespace WebServerMVC.Hubs
             try
             {
 
-                _logger.LogInformation($"Accessing ClientId from Context.Items: {clientId ?? "null"}");
+                //_logger.LogInformation($"Accessing ClientId from Context.Items: {clientId ?? "null"}");
                 if (!string.IsNullOrEmpty(clientId))
                 {
                     await _matchingService.AddToWaitingQueue(clientId, Context.ConnectionId, latitude, longitude, gender, preferredGender, maxDistance);
