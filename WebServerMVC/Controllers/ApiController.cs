@@ -207,13 +207,118 @@ namespace WebServerMVC.Controllers
 
             return File(thumbnailBytes, "image/jpeg");
         }
-
-        // ApiController.cs에 새로운 요청 모델 추가
-        public class UpdatePreferencesRequest
+         // 포인트 충전 API
+        [HttpPost("client/{clientId}/points")]
+        public async Task<IActionResult> ChargePoints(string clientId, [FromBody] PointChargeRequest request)
         {
-            public string PreferredGender { get; set; } = "any";
-            public int MaxDistance { get; set; } = 10000;
+            if (string.IsNullOrEmpty(clientId) || request == null || request.Amount <= 0)
+            {
+                return BadRequest(new { message = "유효하지 않은 요청입니다." });
+            }
+
+            var client = await _clientService.GetClientById(clientId);
+            if (client == null)
+            {
+                return NotFound(new { message = "클라이언트를 찾을 수 없습니다." });
+            }
+
+            try
+            {
+                // 포인트 추가
+                int newPoints = await _clientService.AddPoints(clientId, request.Amount);
+
+                // 클라이언트에게 포인트 업데이트 알림
+                if (!string.IsNullOrEmpty(client.ConnectionId))
+                {
+                    await _hubContext.Clients.Client(client.ConnectionId).SendAsync("PointsUpdated", new
+                    {
+                        points = newPoints,
+                        preferenceActiveUntil = client.PreferenceActiveUntil
+                    });
+                }
+
+                return Ok(new
+                {
+                    points = newPoints
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"포인트 충전 중 오류 발생: {ex.Message}" });
+            }
         }
+
+        // 선호도 활성화 API
+        [HttpPost("client/{clientId}/activate-preference")]
+        public async Task<IActionResult> ActivatePreference(string clientId, [FromBody] ActivatePreferenceRequest request)
+        {
+            if (string.IsNullOrEmpty(clientId) || request == null)
+            {
+                return BadRequest(new { message = "유효하지 않은 요청입니다." });
+            }
+
+            var client = await _clientService.GetClientById(clientId);
+            if (client == null)
+            {
+                return NotFound(new { message = "클라이언트를 찾을 수 없습니다." });
+            }
+
+            if (client.Points < 1000)
+            {
+                return BadRequest(new { message = "포인트가 부족합니다." });
+            }
+
+            try
+            {
+                // 선호도 활성화
+                bool success = await _clientService.ActivatePreference(clientId, request.PreferredGender, request.MaxDistance);
+
+                if (!success)
+                {
+                    return BadRequest(new { message = "선호도 활성화에 실패했습니다." });
+                }
+
+                // 업데이트된 정보 가져오기
+                client = await _clientService.GetClientById(clientId);
+
+                // 클라이언트에게 포인트 업데이트 알림
+                if (!string.IsNullOrEmpty(client.ConnectionId))
+                {
+                    await _hubContext.Clients.Client(client.ConnectionId).SendAsync("PointsUpdated", new
+                    {
+                        points = client.Points,
+                        preferenceActiveUntil = client.PreferenceActiveUntil
+                    });
+                }
+
+                return Ok(new
+                {
+                    points = client.Points,
+                    preferenceActiveUntil = client.PreferenceActiveUntil
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"선호도 활성화 중 오류 발생: {ex.Message}" });
+            }
+        }
+    }
+    // ApiController.cs에 새로운 요청 모델 추가
+    public class UpdatePreferencesRequest
+    {
+        public string PreferredGender { get; set; } = "any";
+        public int MaxDistance { get; set; } = 10000;
+    }
+    // 추가 요청 모델들
+    public class PointChargeRequest
+    {
+        public int Amount { get; set; }
+    }
+    
+    public class ActivatePreferenceRequest
+    {
+        public string PreferredGender { get; set; } = "any";
+        public int MaxDistance { get; set; } = 10000;
     }
 
     public class RegisterClientRequest
