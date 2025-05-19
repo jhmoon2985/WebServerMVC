@@ -19,7 +19,7 @@ namespace WebServerMVC.Services
             _cache = cache;
         }
 
-        public async Task<string> RegisterClient(string clientId, string connectionId, double latitude, double longitude, string gender, string preferredGender, int maxDistance)
+        public async Task<string> RegisterClient(string clientId, string connectionId, double latitude, double longitude, string gender, string preferredGender, int maxDistance, int points = 0, DateTime? preferenceActiveUntil = null)
         {
             if (!string.IsNullOrEmpty(clientId))
             {
@@ -33,6 +33,19 @@ namespace WebServerMVC.Services
                     client.Gender = gender;
                     client.PreferredGender = preferredGender;
                     client.MaxDistance = maxDistance;
+
+                    // 포인트 정보 서버에 저장
+                    if (points > 0)
+                    {
+                        client.Points = points;
+                    }
+                    
+                    // 선호도 활성화 시간 저장
+                    if (preferenceActiveUntil.HasValue)
+                    {
+                        client.PreferenceActiveUntil = preferenceActiveUntil;
+                    }
+                    
                     await _clientRepository.UpdateClient(client);
 
                     // 캐시도 업데이트 - 기존 클라이언트 정보가 변경된 경우
@@ -175,6 +188,71 @@ namespace WebServerMVC.Services
                         AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24)
                     }*/);
             }
+        }
+        // 포인트 관련 메서드 추가
+        public async Task<int> AddPoints(string clientId, int amount)
+        {
+            var client = await GetClientById(clientId);
+            if (client != null)
+            {
+                client.Points += amount;
+                await _clientRepository.UpdateClient(client);
+
+                // 캐시 업데이트
+                await _cache.SetStringAsync($"client:{clientId}",
+                    JsonSerializer.Serialize(client));
+                    
+                return client.Points;
+            }
+            
+            return 0;
+        }
+        
+        // 포인트 차감 메서드
+        public async Task<bool> SubtractPoints(string clientId, int amount)
+        {
+            var client = await GetClientById(clientId);
+            if (client != null && client.Points >= amount)
+            {
+                client.Points -= amount;
+                await _clientRepository.UpdateClient(client);
+
+                // 캐시 업데이트
+                await _cache.SetStringAsync($"client:{clientId}",
+                    JsonSerializer.Serialize(client));
+                    
+                return true;
+            }
+            
+            return false;
+        }
+        
+        // 선호도 활성화 메서드
+        public async Task<bool> ActivatePreference(string clientId, string preferredGender, int maxDistance)
+        {
+            var client = await GetClientById(clientId);
+            if (client != null && client.Points >= 1000)
+            {
+                // 포인트 차감
+                client.Points -= 1000;
+                
+                // 선호도 설정
+                client.PreferredGender = preferredGender;
+                client.MaxDistance = maxDistance;
+                
+                // 활성화 시간 설정 (10분)
+                client.PreferenceActiveUntil = DateTime.UtcNow.AddMinutes(10);
+                
+                await _clientRepository.UpdateClient(client);
+
+                // 캐시 업데이트
+                await _cache.SetStringAsync($"client:{clientId}",
+                    JsonSerializer.Serialize(client));
+                    
+                return true;
+            }
+            
+            return false;
         }
         public async Task RemoveClient(string clientId)
         {
