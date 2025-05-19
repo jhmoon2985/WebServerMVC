@@ -10,6 +10,22 @@
         <a asp-action="ClientMessages" asp-route-clientId="@Model.ClientId" class="btn btn-outline-info">메시지 보기</a>
     </div>
 
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
     <div class="row">
         <div class="col-md-6">
             <div class="card">
@@ -69,6 +85,44 @@
                             </td>
                         </tr>
                     </table>
+                </div>
+            </div>
+
+            <!-- 포인트 정보 카드 추가 -->
+            <div class="card mt-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>포인트 정보</h5>
+                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal"
+                        data-bs-target="#pointsModal">
+                        포인트 관리
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3>현재 포인트: <span class="text-primary">@Model.Points</span></h3>
+                    </div>
+
+                    <div class="mt-3">
+                        <h5>선호도 활성화 상태</h5>
+                        @if (Model.IsPreferenceActive)
+                        {
+                            <div class="alert alert-success">
+                                <strong>활성화됨</strong> (만료: @Model.PreferenceActiveUntil?.ToString("yyyy-MM-dd HH:mm:ss"))
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-secondary">
+                                <strong>비활성화됨</strong>
+                                <div class="mt-2">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
+                                        data-bs-target="#activateModal">
+                                        선호도 활성화
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
                 </div>
             </div>
         </div>
@@ -138,6 +192,93 @@
     </div>
 </div>
 
+<!-- 포인트 관리 모달 -->
+<div class="modal fade" id="pointsModal" tabindex="-1" aria-labelledby="pointsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="pointsModalLabel">포인트 관리</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="nav nav-tabs" id="myTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="add-tab" data-bs-toggle="tab" data-bs-target="#add"
+                            type="button" role="tab" aria-controls="add" aria-selected="true">추가</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="subtract-tab" data-bs-toggle="tab" data-bs-target="#subtract"
+                            type="button" role="tab" aria-controls="subtract" aria-selected="false">차감</button>
+                    </li>
+                </ul>
+                <div class="tab-content mt-3" id="myTabContent">
+                    <div class="tab-pane fade show active" id="add" role="tabpanel" aria-labelledby="add-tab">
+                        <form asp-action="AddPoints" method="post">
+                            <input type="hidden" name="clientId" value="@Model.ClientId" />
+                            <div class="mb-3">
+                                <label for="addAmount" class="form-label">추가할 포인트</label>
+                                <input type="number" class="form-control" id="addAmount" name="amount" min="1"
+                                    value="1000" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">포인트 추가</button>
+                        </form>
+                    </div>
+                    <div class="tab-pane fade" id="subtract" role="tabpanel" aria-labelledby="subtract-tab">
+                        <form asp-action="SubtractPoints" method="post">
+                            <input type="hidden" name="clientId" value="@Model.ClientId" />
+                            <div class="mb-3">
+                                <label for="subtractAmount" class="form-label">차감할 포인트</label>
+                                <input type="number" class="form-control" id="subtractAmount" name="amount" min="1"
+                                    max="@Model.Points" value="@(Math.Min(1000, Model.Points))" required>
+                            </div>
+                            <button type="submit" class="btn btn-danger" @(Model.Points <= 0 ? "disabled" : "")>포인트
+                                차감</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 선호도 활성화 모달 -->
+<div class="modal fade" id="activateModal" tabindex="-1" aria-labelledby="activateModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="activateModalLabel">선호도 활성화</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form asp-action="ActivatePreference" method="post">
+                    <input type="hidden" name="clientId" value="@Model.ClientId" />
+
+                    <div class="alert alert-info">
+                        선호도 활성화에는 1000 포인트가 차감됩니다.
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="preferredGender" class="form-label">선호 성별</label>
+                        <select class="form-select" id="preferredGender" name="preferredGender">
+                            <option value="any" selected="@(Model.PreferredGender == "any")">제한 없음</option>
+                            <option value="male" selected="@(Model.PreferredGender == "male")">남성만</option>
+                            <option value="female" selected="@(Model.PreferredGender == "female")">여성만</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="maxDistance" class="form-label">최대 매칭 거리 (km)</label>
+                        <input type="number" class="form-control" id="maxDistance" name="maxDistance" min="1"
+                            max="10000" value="@Model.MaxDistance" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" @(Model.Points < 1000 ? "disabled" : "")>활성화</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -165,7 +306,7 @@
             @if (Model.IsMatched && matchedClient != null)
                 {
                     <text>
-                                                                // 매칭된 클라이언트 마커 추가
+                                                                                // 매칭된 클라이언트 마커 추가
                         var matchedLocation = [@matchedClient.Latitude, @matchedClient.Longitude];
                         var matchedMarker = L.marker(matchedLocation).addTo(map);
                         matchedMarker.bindPopup('매칭된 클라이언트 위치');
@@ -178,7 +319,7 @@
                         var polyline = L.polyline([clientLocation, matchedLocation], {color: 'red'}).addTo(map);
                     </text>
             }
-                                }
+                                        }
 
         // 지도 로드
         window.onload = initMap;

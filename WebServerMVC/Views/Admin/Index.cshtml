@@ -46,12 +46,44 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 포인트 통계 추가 -->
+            <div class="row mt-3">
+                <div class="col-md-4">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h5>총 포인트</h5>
+                            <h3>@Model.Sum(c => c.Points)</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h5>평균 포인트</h5>
+                            <h3>@(Model.Count > 0 ? Math.Round((double)Model.Sum(c => c.Points) / Model.Count, 2) : 0)
+                            </h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h5>선호도 활성화 클라이언트</h5>
+                            <h3>@Model.Count(c => c.IsPreferenceActive)</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <div class="card">
-        <div class="card-header">
+        <div class="card-header d-flex justify-content-between align-items-center">
             <h5>클라이언트 목록</h5>
+            <div>
+                <button class="btn btn-sm btn-outline-secondary" id="togglePointsColumn">포인트 표시</button>
+            </div>
         </div>
         <div class="card-body">
             <div class="table-responsive">
@@ -62,6 +94,7 @@
                             <th>접속 시간</th>
                             <th>성별</th>
                             <th>위치</th>
+                            <th class="points-column" style="display:none;">포인트</th>
                             <th>상태</th>
                             <th>액션</th>
                         </tr>
@@ -75,8 +108,15 @@
                                 <td>@(string.IsNullOrEmpty(client.Gender) ? "미설정" : (client.Gender.ToLower() == "male" ?
                                                                     "남성" : "여성"))</td>
                             <td>@client.Latitude, @client.Longitude</td>
-                            <td>
-                                @if (string.IsNullOrEmpty(client.ConnectionId))
+                            <td class="points-column" style="display:none;">
+                                <span class="badge bg-primary">@client.Points</span>
+                                @if (client.IsPreferenceActive)
+                                    {
+                                        <span class="badge bg-success">활성</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (string.IsNullOrEmpty(client.ConnectionId))
                                     {
                                         <span class="badge bg-secondary">오프라인</span>
                                     }
@@ -106,6 +146,18 @@
 
 @section Scripts {
     <script>
+        // 포인트 열 토글
+        document.getElementById('togglePointsColumn').addEventListener('click', function () {
+            const pointsColumns = document.querySelectorAll('.points-column');
+            const isHidden = pointsColumns[0].style.display === 'none';
+
+            pointsColumns.forEach(column => {
+                column.style.display = isHidden ? '' : 'none';
+            });
+
+            this.textContent = isHidden ? '포인트 숨기기' : '포인트 표시';
+        });
+
         // 페이지 자동 새로고침 (30초마다)
         setTimeout(function () {
             location.reload();

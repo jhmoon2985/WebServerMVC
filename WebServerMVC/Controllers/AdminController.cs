@@ -106,5 +106,117 @@ namespace WebServerMVC.Controllers
 
             return View(viewModel);
         }
+        // AdminController.cs에 포인트 관리 관련 메서드 추가
+        public async Task<IActionResult> AddPoints(string clientId, int amount)
+        {
+            if (string.IsNullOrEmpty(clientId) || amount <= 0)
+            {
+                TempData["Error"] = "유효하지 않은 요청입니다.";
+                return RedirectToAction("Details", new { id = clientId });
+            }
+
+            var client = await _clientService.GetClientById(clientId);
+            if (client == null)
+            {
+                return NotFound();
+            }
+
+            try
+            {
+                // 포인트 추가
+                int newPoints = await _clientService.AddPoints(clientId, amount);
+
+                TempData["Success"] = $"{amount} 포인트가 추가되었습니다. 현재 포인트: {newPoints}";
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"포인트 추가 중 오류 발생: {ex.Message}";
+            }
+
+            return RedirectToAction("Details", new { id = clientId });
+        }
+
+        public async Task<IActionResult> SubtractPoints(string clientId, int amount)
+        {
+            if (string.IsNullOrEmpty(clientId) || amount <= 0)
+            {
+                TempData["Error"] = "유효하지 않은 요청입니다.";
+                return RedirectToAction("Details", new { id = clientId });
+            }
+
+            var client = await _clientService.GetClientById(clientId);
+            if (client == null)
+            {
+                return NotFound();
+            }
+
+            try
+            {
+                // 포인트 차감
+                bool success = await _clientService.SubtractPoints(clientId, amount);
+
+                if (success)
+                {
+                    TempData["Success"] = $"{amount} 포인트가 차감되었습니다. 현재 포인트: {client.Points - amount}";
+                }
+                else
+                {
+                    TempData["Error"] = "포인트가 부족합니다.";
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"포인트 차감 중 오류 발생: {ex.Message}";
+            }
+
+            return RedirectToAction("Details", new { id = clientId });
+        }
+
+        public async Task<IActionResult> ActivatePreference(string clientId, string preferredGender, int maxDistance)
+        {
+            if (string.IsNullOrEmpty(clientId))
+            {
+                TempData["Error"] = "유효하지 않은 요청입니다.";
+                return RedirectToAction("Details", new { id = clientId });
+            }
+
+            var client = await _clientService.GetClientById(clientId);
+            if (client == null)
+            {
+                return NotFound();
+            }
+
+            if (client.Points < 1000)
+            {
+                TempData["Error"] = "포인트가 부족합니다. 최소 1000포인트가 필요합니다.";
+                return RedirectToAction("Details", new { id = clientId });
+            }
+
+            try
+            {
+                // 선호도 활성화
+                bool success = await _clientService.ActivatePreference(clientId, preferredGender, maxDistance);
+
+                if (success)
+                {
+                    TempData["Success"] = "선호도 활성화에 성공했습니다.";
+                }
+                else
+                {
+                    TempData["Error"] = "선호도 활성화에 실패했습니다.";
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"선호도 활성화 중 오류 발생: {ex.Message}";
+            }
+
+            return RedirectToAction("Details", new { id = clientId });
+        }
+        public async Task<IActionResult> Points()
+        {
+            var clients = await _clientService.GetAllClients();
+            return View(clients.OrderByDescending(c => c.Points).ToList());
+        }
     }
 }
