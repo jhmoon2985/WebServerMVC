@@ -44,7 +44,7 @@ builder.Services.Configure<MatchingSettings>(builder.Configuration.GetSection("M
 builder.Services.AddHostedService<MatchingBackgroundService>();
 
 // CORS ����
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+/*var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("CorsPolicy", builder =>
@@ -53,6 +53,16 @@ builder.Services.AddCors(options =>
                .AllowAnyMethod()
                .AllowAnyHeader()
                .AllowCredentials();
+    });
+});*/
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
     });
 });
 
@@ -69,7 +79,8 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
-app.UseCors("CorsPolicy");
+//app.UseCors("CorsPolicy");
+app.UseCors("AllowAll");
 
 app.UseAuthorization();
 
