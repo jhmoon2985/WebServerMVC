@@ -18,7 +18,7 @@ namespace WebServerMVC.Models
         // 포인트 시스템 추가
         public int Points { get; set; } = 0;
         public DateTime? PreferenceActiveUntil { get; set; } = null;
-        
+
         // 선호도 설정이 활성화 상태인지 확인
         public bool IsPreferenceActive => PreferenceActiveUntil.HasValue && PreferenceActiveUntil.Value > DateTime.UtcNow;
     }
