@@ -207,7 +207,7 @@ namespace WebServerMVC.Controllers
 
             return File(thumbnailBytes, "image/jpeg");
         }
-         // 포인트 충전 API
+        // 포인트 충전 API
         [HttpPost("client/{clientId}/points")]
         public async Task<IActionResult> ChargePoints(string clientId, [FromBody] PointChargeRequest request)
         {
@@ -247,7 +247,33 @@ namespace WebServerMVC.Controllers
                 return StatusCode(500, new { message = $"포인트 충전 중 오류 발생: {ex.Message}" });
             }
         }
+        [HttpPost("client/{clientId}/disconnect")]
+        public async Task<IActionResult> DisconnectClient(string clientId)
+        {
+            var client = await _clientService.GetClientById(clientId);
+            if (client == null)
+            {
+                return NotFound(new { message = "클라이언트를 찾을 수 없습니다." });
+            }
 
+            try
+            {
+                // 매칭 종료
+                if (client.IsMatched)
+                {
+                    await _matchingService.EndMatch(clientId);
+                }
+
+                // ConnectionId 초기화
+                await _clientService.ClearConnectionId(clientId);
+
+                return Ok(new { message = "클라이언트 연결이 해제되었습니다." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"연결 해제 중 오류 발생: {ex.Message}" });
+            }
+        }
         // 선호도 활성화 API
         [HttpPost("client/{clientId}/activate-preference")]
         public async Task<IActionResult> ActivatePreference(string clientId, [FromBody] ActivatePreferenceRequest request)
@@ -314,7 +340,7 @@ namespace WebServerMVC.Controllers
     {
         public int Amount { get; set; }
     }
-    
+
     public class ActivatePreferenceRequest
     {
         public string PreferredGender { get; set; } = "any";

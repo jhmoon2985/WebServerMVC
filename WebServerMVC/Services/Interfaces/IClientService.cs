@@ -21,5 +21,7 @@ namespace WebServerMVC.Services.Interfaces
         Task<int> AddPoints(string clientId, int amount);
         Task<bool> SubtractPoints(string clientId, int amount);
         Task<bool> ActivatePreference(string clientId, string preferredGender, int maxDistance);
+        Task ClearConnectionId(string clientId);
+        Task ClearAllOfflineConnections();
     }
 }

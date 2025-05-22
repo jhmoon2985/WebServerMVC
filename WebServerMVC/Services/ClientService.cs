@@ -39,13 +39,13 @@ namespace WebServerMVC.Services
                     {
                         client.Points = points;
                     }
-                    
+
                     // 선호도 활성화 시간 저장
                     if (preferenceActiveUntil.HasValue)
                     {
                         client.PreferenceActiveUntil = preferenceActiveUntil;
                     }
-                    
+
                     await _clientRepository.UpdateClient(client);
 
                     // 캐시도 업데이트 - 기존 클라이언트 정보가 변경된 경우
@@ -201,13 +201,13 @@ namespace WebServerMVC.Services
                 // 캐시 업데이트
                 await _cache.SetStringAsync($"client:{clientId}",
                     JsonSerializer.Serialize(client));
-                    
+
                 return client.Points;
             }
-            
+
             return 0;
         }
-        
+
         // 포인트 차감 메서드
         public async Task<bool> SubtractPoints(string clientId, int amount)
         {
@@ -220,13 +220,13 @@ namespace WebServerMVC.Services
                 // 캐시 업데이트
                 await _cache.SetStringAsync($"client:{clientId}",
                     JsonSerializer.Serialize(client));
-                    
+
                 return true;
             }
-            
+
             return false;
         }
-        
+
         // 선호도 활성화 메서드
         public async Task<bool> ActivatePreference(string clientId, string preferredGender, int maxDistance)
         {
@@ -235,23 +235,23 @@ namespace WebServerMVC.Services
             {
                 // 포인트 차감
                 client.Points -= 1000;
-                
+
                 // 선호도 설정
                 client.PreferredGender = preferredGender;
                 client.MaxDistance = maxDistance;
-                
+
                 // 활성화 시간 설정 (10분)
                 client.PreferenceActiveUntil = DateTime.UtcNow.AddMinutes(10);
-                
+
                 await _clientRepository.UpdateClient(client);
 
                 // 캐시 업데이트
                 await _cache.SetStringAsync($"client:{clientId}",
                     JsonSerializer.Serialize(client));
-                    
+
                 return true;
             }
-            
+
             return false;
         }
         public async Task RemoveClient(string clientId)
@@ -282,9 +282,42 @@ namespace WebServerMVC.Services
         {
             // DB만 업데이트
             await _clientRepository.UpdateClient(client);
-            
+
             // Redis 캐시에서 삭제
             await _cache.RemoveAsync($"client:{client.ClientId}");
+        }
+        // ClientService.cs에 추가
+        public async Task ClearConnectionId(string clientId)
+        {
+            var client = await GetClientById(clientId);
+            if (client != null)
+            {
+                client.ConnectionId = string.Empty;
+                client.IsMatched = false;
+                client.MatchedWithClientId = null;
+
+                await _clientRepository.UpdateClient(client);
+
+                // 캐시에서 제거 (다음 조회 시 DB에서 최신 정보를 가져옴)
+                await _cache.RemoveAsync($"client:{clientId}");
+            }
+        }
+
+        // 모든 오프라인 클라이언트의 ConnectionId 초기화
+        public async Task ClearAllOfflineConnections()
+        {
+            var allClients = await GetAllClients();
+
+            foreach (var client in allClients.Where(c => !string.IsNullOrEmpty(c.ConnectionId)))
+            {
+                // SignalR 연결 상태 확인 로직이 필요하면 여기에 추가
+                client.ConnectionId = string.Empty;
+                client.IsMatched = false;
+                client.MatchedWithClientId = null;
+
+                await _clientRepository.UpdateClient(client);
+                await _cache.RemoveAsync($"client:{client.ClientId}");
+            }
         }
     }
 }

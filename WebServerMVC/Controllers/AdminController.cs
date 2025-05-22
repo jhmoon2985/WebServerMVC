@@ -218,5 +218,43 @@ namespace WebServerMVC.Controllers
             var clients = await _clientService.GetAllClients();
             return View(clients.OrderByDescending(c => c.Points).ToList());
         }
+        [HttpPost]
+        public async Task<IActionResult> ClearConnectionId(string clientId)
+        {
+            if (string.IsNullOrEmpty(clientId))
+            {
+                TempData["Error"] = "유효하지 않은 클라이언트 ID입니다.";
+                return RedirectToAction("Index");
+            }
+
+            try
+            {
+                await _clientService.ClearConnectionId(clientId);
+                TempData["Success"] = "ConnectionId가 초기화되었습니다.";
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"ConnectionId 초기화 중 오류 발생: {ex.Message}";
+            }
+
+            return RedirectToAction("Details", new { id = clientId });
+        }
+
+        // 모든 오프라인 연결 정리
+        [HttpPost]
+        public async Task<IActionResult> ClearAllOfflineConnections()
+        {
+            try
+            {
+                await _clientService.ClearAllOfflineConnections();
+                TempData["Success"] = "모든 오프라인 연결이 정리되었습니다.";
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"연결 정리 중 오류 발생: {ex.Message}";
+            }
+
+            return RedirectToAction("Index");
+        }
     }
 }
