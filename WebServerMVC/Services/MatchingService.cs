@@ -12,14 +12,14 @@ namespace WebServerMVC.Services
     public class MatchingService : IMatchingService
     {
         private readonly WaitingQueue _waitingQueue;
-        private readonly IClientService _clientService;
+        private readonly IChatClientService _clientService;
         private readonly IMatchRepository _matchRepository;
         private readonly ILocationService _locationService;
         private readonly IHubContext<ChatHub> _hubContext;
 
         public MatchingService(
             WaitingQueue waitingQueue,
-            IClientService clientService,
+            IChatClientService clientService,
             IMatchRepository matchRepository,
             ILocationService locationService,
             IHubContext<ChatHub> hubContext)

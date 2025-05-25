@@ -11,9 +11,9 @@ namespace WebServerMVC.Controllers
     public class DatabaseController : Controller
     {
         private readonly AppDbContext _context;
-        private readonly IClientService _clientService;
+        private readonly IChatClientService _clientService;
 
-        public DatabaseController(AppDbContext context, IClientService clientService)
+        public DatabaseController(AppDbContext context, IChatClientService clientService)
         {
             _context = context;
             _clientService = clientService;

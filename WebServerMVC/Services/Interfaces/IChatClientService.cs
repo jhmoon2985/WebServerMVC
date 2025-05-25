@@ -3,7 +3,7 @@ using WebServerMVC.Models;
 
 namespace WebServerMVC.Services.Interfaces
 {
-    public interface IClientService
+    public interface IChatClientService
     {
         Task<string> RegisterClient(string clientId, string connectionId, double latitude, double longitude, string gender, string preferredGender, int maxDistance, int points = 0, DateTime? preferenceActiveUntil = null);
         Task<Client> GetClientById(string clientId);
@@ -13,7 +13,7 @@ namespace WebServerMVC.Services.Interfaces
         Task UpdateClientPreferences(string clientId, string preferredGender, int maxDistance);
         Task UpdateClientMatchClientId(string clientId, string MatchedWithClientId);
         Task RemoveClient(string clientId);
-        // IClientService.cs에 다음 메서드 추가
+        // IChatClientService.cs에 다음 메서드 추가
         Task<List<Client>> GetAllClients();
         Task UpdateClient(Client client);
         Task UpdateClientAndClearCache(Client client);

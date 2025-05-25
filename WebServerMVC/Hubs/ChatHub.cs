@@ -13,14 +13,14 @@ namespace WebServerMVC.Hubs
     //[Authorize]
     public class ChatHub : Hub
     {
-        private readonly IClientService _clientService;
+        private readonly IChatClientService _clientService;
         private readonly IMatchingService _matchingService;
         private readonly ILogger<ChatHub> _logger;
         private readonly IMessageService _messageService;
 
 
         public ChatHub(
-            IClientService clientService,
+            IChatClientService clientService,
             IMatchingService matchingService,
             IMessageService messageService,
             ILogger<ChatHub> logger)
@@ -265,7 +265,7 @@ namespace WebServerMVC.Hubs
         // ChatHub.cs에 추가
         public async Task GetClientStats()
         {
-            var clientService = Context.GetHttpContext().RequestServices.GetRequiredService<IClientService>();
+            var clientService = Context.GetHttpContext().RequestServices.GetRequiredService<IChatClientService>();
             var clients = await clientService.GetAllClients();
 
             var stats = new

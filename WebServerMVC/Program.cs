@@ -50,7 +50,7 @@ builder.Services.AddSingleton<WaitingQueue>();
 // ������ ����
 builder.Services.AddScoped<IClientRepository, ClientRepository>();
 builder.Services.AddScoped<IMatchRepository, MatchRepository>();
-builder.Services.AddScoped<IClientService, ClientService>();
+builder.Services.AddScoped<IChatClientService, ChatClientService>();
 builder.Services.AddScoped<IMatchingService, MatchingService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddScoped<IImageService, ImageService>();
