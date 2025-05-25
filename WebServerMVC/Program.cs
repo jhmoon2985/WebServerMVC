@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using StackExchange.Redis;
 using WebServerMVC.Data;
 using WebServerMVC.Hubs;
 using WebServerMVC.Models;
@@ -13,6 +15,17 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews();
 builder.Services.AddSignalR();
 
+// Authentication 추가
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Auth/Login";
+        options.LogoutPath = "/Auth/Logout";
+        options.AccessDeniedPath = "/Auth/AccessDenied";
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.SlidingExpiration = true;
+    });
+
 // DB Context
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -22,6 +35,13 @@ builder.Services.AddStackExchangeRedisCache(options =>
 {
     options.Configuration = builder.Configuration.GetConnectionString("RedisConnection");
     options.InstanceName = "WebServerMVC_";
+});
+
+// Redis ConnectionMultiplexer 등록 (Redis 관리용)
+builder.Services.AddSingleton<IConnectionMultiplexer>(provider =>
+{
+    var configuration = builder.Configuration.GetConnectionString("RedisConnection");
+    return ConnectionMultiplexer.Connect(configuration);
 });
 
 // �̱��� ����
@@ -82,6 +102,8 @@ app.UseRouting();
 //app.UseCors("CorsPolicy");
 app.UseCors("AllowAll");
 
+// Authentication & Authorization 미들웨어 추가
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(

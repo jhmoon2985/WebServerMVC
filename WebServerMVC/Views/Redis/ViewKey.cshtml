@@ -1,0 +1,431 @@
+﻿@model RedisKeyDetailViewModel
+@{
+    ViewData["Title"] = "Redis 키 상세 정보";
+}
+
+<div class="container">
+    <div class="mb-3">
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Redis 관리로
+        </a>
+    </div>
+
+    <h1 class="mb-4">
+        <i class="fas fa-key me-2"></i>Redis 키 상세 정보
+    </h1>
+
+    <!-- 키 정보 카드 -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5><i class="fas fa-info-circle me-2"></i>키 정보</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="mb-2">
+                        <strong><i class="fas fa-key me-2"></i>키:</strong>
+                    </div>
+                    <div class="bg-light p-3 rounded">
+                        <code class="text-break">@Model.Key</code>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-end">
+                        <div class="mb-2">
+                            <span class="badge bg-info fs-6">
+                                <i class="fas fa-weight-hanging me-1"></i>크기: @Model.Size bytes
+                            </span>
+                        </div>
+                        @if (Model.IsJson)
+                        {
+                            <div class="mb-2">
+                                <span class="badge bg-success fs-6">
+                                    <i class="fas fa-code me-1"></i>JSON 형식
+                                </span>
+                            </div>
+                        }
+                        <div>
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>조회 시간: @DateTime.Now.ToString("HH:mm:ss")
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 값 표시 카드 -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5><i class="fas fa-file-code me-2"></i>키 값</h5>
+            <div class="btn-group">
+                @if (Model.IsJson)
+                {
+                    <button class="btn btn-sm btn-outline-primary" onclick="toggleFormat()">
+                        <i class="fas fa-exchange-alt me-1"></i><span id="formatToggleText">RAW 보기</span>
+                    </button>
+                }
+                <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard()">
+                    <i class="fas fa-copy me-1"></i>복사
+                </button>
+                <button class="btn btn-sm btn-outline-info" onclick="downloadAsFile()">
+                    <i class="fas fa-download me-1"></i>다운로드
+                </button>
+                <form asp-action="DeleteKey" method="post" style="display: inline;" 
+                      onsubmit="return confirm('정말로 이 키를 삭제하시겠습니까?\n\n⚠️ 이 작업은 되돌릴 수 없습니다.')">
+                    <input type="hidden" name="key" value="@Model.Key" />
+                    <button type="submit" class="btn btn-sm btn-danger">
+                        <i class="fas fa-trash me-1"></i>삭제
+                    </button>
+                </form>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.IsJson)
+            {
+                <!-- JSON 포맷된 보기 -->
+                <div id="formattedValue">
+                    <div class="bg-dark text-light p-3">
+                        <pre><code class="language-json" style="color: #f8f8f2; background: transparent;">@Model.FormattedValue</code></pre>
+                    </div>
+                </div>
+                <!-- RAW 보기 -->
+                <div id="rawValue" style="display: none;">
+                    <div class="bg-light p-3">
+                        <pre><code style="color: #333;">@Model.Value</code></pre>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="bg-light p-3">
+                    <pre><code id="valueContent" style="color: #333;">@Model.Value</code></pre>
+                </div>
+            }
+        </div>
+        <div class="card-footer bg-light">
+            <div class="row">
+                <div class="col-md-6">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        @if (Model.IsJson)
+                        {
+                            <span>JSON 형식으로 파싱됨</span>
+                        }
+                        else
+                        {
+                            <span>일반 텍스트 형식</span>
+                        }
+                    </small>
+                </div>
+                <div class="col-md-6 text-end">
+                    <small class="text-muted">
+                        <i class="fas fa-eye me-1"></i>읽기 전용 | 
+                        <i class="fas fa-clock me-1"></i>@DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 키 분석 정보 -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6><i class="fas fa-chart-bar me-2"></i>키 분석</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div>
+                                <h5 class="text-primary">@Model.Size</h5>
+                                <small class="text-muted">Bytes</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div>
+                                <h5 class="text-info">@(Model.Value.Split('\n').Length)</h5>
+                                <small class="text-muted">Lines</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div>
+                                <h5 class="text-success">@Model.Value.Length</h5>
+                                <small class="text-muted">Characters</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6><i class="fas fa-tools me-2"></i>키 타입 분석</h6>
+                </div>
+                <div class="card-body">
+                    @{
+                        var keyType = "기타";
+                        var keyIcon = "fa-question";
+                        var keyColor = "secondary";
+                        
+                        if (Model.Key.Contains("client:"))
+                        {
+                            keyType = "클라이언트 데이터";
+                            keyIcon = "fa-user";
+                            keyColor = "primary";
+                        }
+                        else if (Model.Key.Contains("session:"))
+                        {
+                            keyType = "세션 데이터";
+                            keyIcon = "fa-clock";
+                            keyColor = "warning";
+                        }
+                        else if (Model.Key.Contains("cache:"))
+                        {
+                            keyType = "캐시 데이터";
+                            keyIcon = "fa-memory";
+                            keyColor = "info";
+                        }
+                    }
+                    
+                    <div class="text-center">
+                        <i class="fas @keyIcon fa-3x text-@keyColor mb-2"></i>
+                        <h6>@keyType</h6>
+                        <span class="badge bg-@keyColor">@Model.Key.Split(':').FirstOrDefault()</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+    <script>
+        let showingFormatted = true;
+
+        function toggleFormat() {
+            const rawValue = document.getElementById('rawValue');
+            const formattedValue = document.getElementById('formattedValue');
+            const toggleText = document.getElementById('formatToggleText');
+            
+            if (showingFormatted) {
+                rawValue.style.display = 'block';
+                formattedValue.style.display = 'none';
+                toggleText.textContent = 'JSON 보기';
+                showingFormatted = false;
+            } else {
+                rawValue.style.display = 'none';
+                formattedValue.style.display = 'block';
+                toggleText.textContent = 'RAW 보기';
+                showingFormatted = true;
+            }
+        }
+
+        function copyToClipboard() {
+            let textToCopy;
+            
+            @if (Model.IsJson)
+            {
+                <text>
+                if (showingFormatted) {
+                    textToCopy = `@Html.Raw(Model.FormattedValue.Replace("`", "\\`").Replace("$", "\\$").Replace("\\", "\\\\"))`;
+                } else {
+                    textToCopy = `@Html.Raw(Model.Value.Replace("`", "\\`").Replace("$", "\\$").Replace("\\", "\\\\"))`;
+                }
+                </text>
+            }
+            else
+            {
+                <text>
+                textToCopy = `@Html.Raw(Model.Value.Replace("`", "\\`").Replace("$", "\\$").Replace("\\", "\\\\"))`;
+                </text>
+            }
+
+            navigator.clipboard.writeText(textToCopy).then(function() {
+                // 성공 피드백
+                const button = event.target.closest('button');
+                const originalHtml = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-check me-1"></i>복사됨!';
+                button.classList.remove('btn-outline-secondary');
+                button.classList.add('btn-success');
+                
+                setTimeout(function() {
+                    button.innerHTML = originalHtml;
+                    button.classList.remove('btn-success');
+                    button.classList.add('btn-outline-secondary');
+                }, 2000);
+            }).catch(function(err) {
+                console.error('복사 실패:', err);
+                
+                // 대체 방법: 텍스트 선택
+                const textArea = document.createElement('textarea');
+                textArea.value = textToCopy;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                const button = event.target.closest('button');
+                const originalHtml = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-check me-1"></i>복사됨!';
+                button.classList.remove('btn-outline-secondary');
+                button.classList.add('btn-success');
+                
+                setTimeout(function() {
+                    button.innerHTML = originalHtml;
+                    button.classList.remove('btn-success');
+                    button.classList.add('btn-outline-secondary');
+                }, 2000);
+            });
+        }
+
+        function downloadAsFile() {
+            let content;
+            let filename;
+            
+            @if (Model.IsJson)
+            {
+                <text>
+                if (showingFormatted) {
+                    content = `@Html.Raw(Model.FormattedValue.Replace("`", "\\`").Replace("$", "\\$").Replace("\\", "\\\\"))`;
+                    filename = 'redis_key_formatted.json';
+                } else {
+                    content = `@Html.Raw(Model.Value.Replace("`", "\\`").Replace("$", "\\$").Replace("\\", "\\\\"))`;
+                    filename = 'redis_key_raw.txt';
+                }
+                </text>
+            }
+            else
+            {
+                <text>
+                content = `@Html.Raw(Model.Value.Replace("`", "\\`").Replace("$", "\\$").Replace("\\", "\\\\"))`;
+                filename = 'redis_key_value.txt';
+                </text>
+            }
+
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            // 피드백
+            const button = event.target.closest('button');
+            const originalHtml = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-check me-1"></i>다운로드됨!';
+            button.classList.remove('btn-outline-info');
+            button.classList.add('btn-success');
+            
+            setTimeout(function() {
+                button.innerHTML = originalHtml;
+                button.classList.remove('btn-success');
+                button.classList.add('btn-outline-info');
+            }, 2000);
+        }
+
+        // Prism.js 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            Prism.highlightAll();
+        });
+
+        // 키보드 단축키
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+C: 복사
+            if (e.ctrlKey && e.key === 'c' && !window.getSelection().toString()) {
+                e.preventDefault();
+                copyToClipboard();
+            }
+            // Ctrl+S: 다운로드
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                downloadAsFile();
+            }
+            // F: 포맷 토글 (JSON인 경우)
+            @if (Model.IsJson)
+            {
+                <text>
+                if (e.key === 'f' || e.key === 'F') {
+                    if (!e.ctrlKey && !e.altKey && document.activeElement.tagName !== 'INPUT') {
+                        toggleFormat();
+                    }
+                }
+                </text>
+            }
+        });
+    </script>
+
+    <style>
+        .card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        
+        .card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        pre {
+            margin: 0;
+            max-height: 600px;
+            overflow-y: auto;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+        
+        code {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        
+        .btn {
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+        
+        .bg-dark pre {
+            background: #2d3748 !important;
+        }
+        
+        .text-break {
+            word-break: break-all;
+        }
+        
+        .card-footer {
+            border-top: 1px solid rgba(0,0,0,0.125);
+        }
+        
+        /* 스크롤바 스타일링 */
+        pre::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        pre::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        pre::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        
+        pre::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+}
