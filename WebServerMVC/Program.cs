@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using StackExchange.Redis;
 using WebServerMVC.Data;
 using WebServerMVC.Hubs;
 using WebServerMVC.Models;
@@ -13,6 +15,20 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews();
 builder.Services.AddSignalR();
 
+// HttpClient 추가 (인앱결제 API 호출용)
+builder.Services.AddHttpClient();
+
+// Authentication 추가
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Auth/Login";
+        options.LogoutPath = "/Auth/Logout";
+        options.AccessDeniedPath = "/Auth/AccessDenied";
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.SlidingExpiration = true;
+    });
+
 // DB Context
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -24,17 +40,42 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.InstanceName = "WebServerMVC_";
 });
 
+// Redis ConnectionMultiplexer 등록 (Redis 관리용)
+builder.Services.AddSingleton<IConnectionMultiplexer>(provider =>
+{
+    var configuration = builder.Configuration.GetConnectionString("RedisConnection");
+    return ConnectionMultiplexer.Connect(configuration);
+});
+
 // �̱��� ����
 builder.Services.AddSingleton<WaitingQueue>();
 
 // ������ ����
 builder.Services.AddScoped<IClientRepository, ClientRepository>();
 builder.Services.AddScoped<IMatchRepository, MatchRepository>();
-builder.Services.AddScoped<IClientService, ClientService>();
+builder.Services.AddScoped<IInAppPurchaseRepository, InAppPurchaseRepository>(); // 추가
+
+builder.Services.AddScoped<IChatClientService, ChatClientService>();
 builder.Services.AddScoped<IMatchingService, MatchingService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<IMessageService, MessageService>();
+builder.Services.AddScoped<GooglePlayService>();
+builder.Services.AddScoped<OneStoreService>();
+builder.Services.AddScoped<IInAppPurchaseService, OptimizedInAppPurchaseService>(); // 추가
+
+// HttpClient 설정 (재시도 정책 포함)
+builder.Services.AddHttpClient<GooglePlayService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(60);
+    client.DefaultRequestHeaders.Add("User-Agent", "WebServerMVC/1.0");
+});
+
+builder.Services.AddHttpClient<OneStoreService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+    client.DefaultRequestHeaders.Add("User-Agent", "WebServerMVC/1.0");
+});
 
 // ���� ���ε�
 builder.Services.Configure<ClientSettings>(builder.Configuration.GetSection("ClientSettings"));
@@ -82,6 +123,8 @@ app.UseRouting();
 //app.UseCors("CorsPolicy");
 app.UseCors("AllowAll");
 
+// Authentication & Authorization 미들웨어 추가
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(

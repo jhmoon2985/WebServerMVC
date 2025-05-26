@@ -13,14 +13,14 @@ namespace WebServerMVC.Hubs
     //[Authorize]
     public class ChatHub : Hub
     {
-        private readonly IClientService _clientService;
+        private readonly IChatClientService _clientService;
         private readonly IMatchingService _matchingService;
         private readonly ILogger<ChatHub> _logger;
         private readonly IMessageService _messageService;
 
 
         public ChatHub(
-            IClientService clientService,
+            IChatClientService clientService,
             IMatchingService matchingService,
             IMessageService messageService,
             ILogger<ChatHub> logger)
@@ -114,16 +114,6 @@ namespace WebServerMVC.Hubs
                 if (info["maxDistance"] != null)
                     maxDistance = info["maxDistance"].ToObject<int>();
 
-                // 포인트 정보 추출
-                int points = 0; // 기본값
-                if (info["points"] != null)
-                    points = info["points"].ToObject<int>();
-                    
-                // 선호도 활성화 시간 추출
-                DateTime? preferenceActiveUntil = null; // 기본값
-                if (info["preferenceActiveUntil"] != null && info["preferenceActiveUntil"].Type != JTokenType.Null)
-                    preferenceActiveUntil = info["preferenceActiveUntil"].ToObject<DateTime>();
-
                 // 연결 ID와 클라이언트 ID 매핑
                 string connectionId = Context.ConnectionId;
 
@@ -169,42 +159,6 @@ namespace WebServerMVC.Hubs
             if (!string.IsNullOrEmpty(clientId))
             {
                 await _clientService.UpdateClientPreferences(clientId, preferredGender, maxDistance);
-            }
-        }
-// 선호도 활성화 메서드 추가
-        public async Task ActivatePreference(string preferredGender, int maxDistance)
-        {
-            var clientId = Context.Items["ClientId"] as string;
-            if (!string.IsNullOrEmpty(clientId))
-            {
-                var client = await _clientService.GetClientById(clientId);
-                
-                // 포인트 확인
-                if (client == null || client.Points < 1000)
-                {
-                    await Clients.Caller.SendAsync("Error", "포인트가 부족합니다.");
-                    return;
-                }
-                
-                // 선호도 활성화
-                bool success = await _clientService.ActivatePreference(clientId, preferredGender, maxDistance);
-                
-                if (success)
-                {
-                    // 업데이트된 정보 가져오기
-                    client = await _clientService.GetClientById(clientId);
-                    
-                    // 클라이언트에게 알림
-                    await Clients.Caller.SendAsync("PointsUpdated", new 
-                    { 
-                        points = client.Points,
-                        preferenceActiveUntil = client.PreferenceActiveUntil
-                    });
-                }
-                else
-                {
-                    await Clients.Caller.SendAsync("Error", "선호도 활성화에 실패했습니다.");
-                }
             }
         }
 
@@ -311,7 +265,7 @@ namespace WebServerMVC.Hubs
         // ChatHub.cs에 추가
         public async Task GetClientStats()
         {
-            var clientService = Context.GetHttpContext().RequestServices.GetRequiredService<IClientService>();
+            var clientService = Context.GetHttpContext().RequestServices.GetRequiredService<IChatClientService>();
             var clients = await clientService.GetAllClients();
 
             var stats = new

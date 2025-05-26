@@ -13,7 +13,7 @@ namespace WebServerMVC.Controllers
     [Route("api")]
     public class ApiController : ControllerBase
     {
-        private readonly IClientService _clientService;
+        private readonly IChatClientService _clientService;
         private readonly IMatchingService _matchingService;
         private readonly IImageService _imageService;
         private readonly IMessageService _messageService;
@@ -21,7 +21,7 @@ namespace WebServerMVC.Controllers
         private readonly IHubContext<ChatHub> _hubContext;
 
         public ApiController(
-            IClientService clientService,
+            IChatClientService clientService,
             IMatchingService matchingService,
             IImageService imageService,
             IMessageService messageService,

@@ -1,0 +1,576 @@
+﻿@model RedisDataViewModel
+@{
+    ViewData["Title"] = "Redis 데이터 관리";
+}
+
+<div class="container">
+    <div class="mb-3">
+        <a asp-action="Index" asp-controller="Admin" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>관리자 홈
+        </a>
+    </div>
+
+    <h1 class="mb-4">
+        <i class="fas fa-memory me-2"></i>Redis 데이터 관리
+    </h1>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Info"] != null)
+    {
+        <div class="alert alert-info alert-dismissible fade show">
+            <i class="fas fa-info-circle me-2"></i>@TempData["Info"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">
+            <h5><i class="fas fa-exclamation-triangle me-2"></i>Redis 연결 오류</h5>
+            <p>@Model.ErrorMessage</p>
+            <hr>
+            <p class="mb-0">
+                <strong>해결 방법:</strong>
+                <ul class="mt-2">
+                    <li>Redis 서버가 실행 중인지 확인하세요</li>
+                    <li>연결 문자열을 확인하세요: <code>@(ViewContext.HttpContext.RequestServices.GetService<IConfiguration>()?.GetConnectionString("RedisConnection") ?? "설정되지 않음")</code></li>
+                    <li>방화벽 설정을 확인하세요</li>
+                </ul>
+            </p>
+        </div>
+    }
+    else
+    {
+        <!-- Redis 서버 정보 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="fas fa-server me-2"></i>Redis 서버 정보</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card text-center @(Model.ServerInfo.IsConnected ? "bg-success" : "bg-danger") text-white">
+                            <div class="card-body">
+                                <i class="fas @(Model.ServerInfo.IsConnected ? "fa-check-circle" : "fa-times-circle") fa-2x mb-2"></i>
+                                <h4>@(Model.ServerInfo.IsConnected ? "연결됨" : "연결 끊김")</h4>
+                                <p class="mb-0">서버 상태</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-primary text-white text-center">
+                            <div class="card-body">
+                                <i class="fas fa-key fa-2x mb-2"></i>
+                                <h4>@Model.TotalKeys</h4>
+                                <p class="mb-0">총 키 개수</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-info text-white text-center">
+                            <div class="card-body">
+                                <i class="fas fa-users fa-2x mb-2"></i>
+                                <h4>@Model.ClientKeys</h4>
+                                <p class="mb-0">클라이언트 키</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong><i class="fas fa-link me-2"></i>연결 정보:</strong> 
+                            <code class="bg-light p-1 rounded">@Model.ServerInfo.Configuration</code>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>마지막 업데이트: @DateTime.Now.ToString("HH:mm:ss")
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Redis 데이터 관리 - 위험도별 구분 -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <h5><i class="fas fa-users me-2"></i>클라이언트 캐시 관리</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>클라이언트 관련 Redis 캐시만 삭제합니다.</p>
+                        <div class="d-grid">
+                            <button type="button" class="btn btn-warning" onclick="confirmAction('deleteClientKeys')">
+                                <i class="fas fa-user-times me-2"></i>클라이언트 캐시 삭제
+                                <small class="d-block">(@Model.ClientKeys 개 키)</small>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h5><i class="fas fa-database me-2"></i>애플리케이션 캐시</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>모든 애플리케이션 캐시를 삭제합니다.</p>
+                        <div class="d-grid">
+                            <button type="button" class="btn btn-danger" onclick="confirmAction('deleteAllKeys')">
+                                <i class="fas fa-trash-alt me-2"></i>모든 앱 캐시 삭제
+                                <small class="d-block">(@Model.TotalKeys 개 키)</small>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card border-dark">
+                    <div class="card-header bg-dark text-white">
+                        <h5><i class="fas fa-bomb me-2"></i>전체 DB 초기화</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong class="text-danger">⚠️ 매우 위험:</strong> Redis DB 전체를 초기화합니다.</p>
+                        <div class="d-grid">
+                            <button type="button" class="btn btn-dark" onclick="confirmAction('flushDatabase')">
+                                <i class="fas fa-skull-crossbones me-2"></i>DB 완전 초기화
+                                <small class="d-block text-warning">복구 불가능!</small>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 개별 키 관리 -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-key me-2"></i>개별 키 삭제</h5>
+                    </div>
+                    <div class="card-body">
+                        <form asp-action="DeleteKey" method="post" onsubmit="return confirmDelete('키')">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-key"></i></span>
+                                <input type="text" class="form-control" name="key" placeholder="삭제할 키 이름 입력" required>
+                                <button class="btn btn-danger" type="submit">
+                                    <i class="fas fa-trash me-1"></i>삭제
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                예: WebServerMVC_client:12345678-1234-1234-1234-123456789012
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-search me-2"></i>키 검색</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            <input type="text" class="form-control" id="searchInput" placeholder="키 검색..." onkeyup="searchKeys()">
+                            <button class="btn btn-outline-primary" onclick="clearSearch()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">
+                            키 이름으로 실시간 검색
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Redis 캐시 데이터 목록 -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-list me-2"></i>캐시 데이터 목록</h5>
+                <div class="d-flex align-items-center gap-2">
+                    <select class="form-select form-select-sm" style="width: auto;" onchange="filterByType(this.value)">
+                        <option value="">모든 타입</option>
+                        <option value="Client">클라이언트</option>
+                        <option value="Other">기타</option>
+                        <option value="Unknown">알 수 없음</option>
+                    </select>
+                    <button class="btn btn-sm btn-outline-primary" onclick="location.reload()">
+                        <i class="fas fa-sync-alt me-1"></i>새로고침
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                @if (Model.CacheEntries.Count == 0)
+                {
+                    <div class="alert alert-info text-center">
+                        <i class="fas fa-info-circle fa-2x mb-3"></i>
+                        <h5>캐시 데이터가 없습니다</h5>
+                        <p class="mb-0">Redis에 저장된 데이터가 없거나 연결에 문제가 있을 수 있습니다.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="cacheTable">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th style="width: 40%;"><i class="fas fa-key me-1"></i>키</th>
+                                    <th style="width: 10%;"><i class="fas fa-tag me-1"></i>타입</th>
+                                    <th style="width: 10%;"><i class="fas fa-weight-hanging me-1"></i>크기</th>
+                                    <th style="width: 25%;"><i class="fas fa-eye me-1"></i>값 미리보기</th>
+                                    <th style="width: 15%;"><i class="fas fa-cogs me-1"></i>액션</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var entry in Model.CacheEntries.OrderBy(e => e.Type).ThenBy(e => e.Key))
+                                {
+                                    <tr data-type="@entry.Type" class="cache-row">
+                                        <td>
+                                            <code class="text-break small">@entry.Key</code>
+                                        </td>
+                                        <td>
+                                            <span class="badge @(entry.Type == "Client" ? "bg-primary" : entry.Type == "Other" ? "bg-secondary" : "bg-warning")">
+                                                <i class="fas @(entry.Type == "Client" ? "fa-user" : entry.Type == "Other" ? "fa-cog" : "fa-question") me-1"></i>@entry.Type
+                                            </span>
+                                        </td>
+                                        <td class="text-end">
+                                            <span class="badge bg-info">@entry.Size B</span>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">
+                                                @{
+                                                    var preview = entry.Value.Length > 80 ? 
+                                                        entry.Value.Substring(0, 80) + "..." : 
+                                                        entry.Value;
+                                                }
+                                                <span class="font-monospace">@preview</span>
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group">
+                                                <a asp-action="ViewKey" asp-route-key="@entry.Key" 
+                                                   class="btn btn-sm btn-outline-info" title="상세 보기">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" 
+                                                        onclick="copyKey('@Html.Raw(entry.Key.Replace("'", "\\'"))')" title="키 복사">
+                                                    <i class="fas fa-copy"></i>
+                                                </button>
+                                                <form asp-action="DeleteKey" method="post" style="display: inline;"
+                                                      onsubmit="return confirmDelete('키')">
+                                                    <input type="hidden" name="key" value="@entry.Key" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="삭제">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mt-3 d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            총 @Model.CacheEntries.Count 개의 키가 표시됨
+                        </small>
+                        <small class="text-muted">
+                            마지막 업데이트: @DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+                        </small>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- 숨겨진 폼들 -->
+    <form id="deleteClientKeysForm" asp-action="DeleteAllClientKeys" method="post" style="display: none;"></form>
+    <form id="deleteAllKeysForm" asp-action="DeleteAllKeys" method="post" style="display: none;"></form>
+    <form id="flushDatabaseForm" asp-action="FlushDatabase" method="post" style="display: none;"></form>
+</div>
+
+<!-- 확인 모달 -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title" id="confirmModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2 text-warning"></i>Redis 작업 확인
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center p-4" id="confirmModalBody">
+                <!-- 동적으로 설정됨 -->
+            </div>
+            <div class="modal-footer border-0 justify-content-center">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>취소
+                </button>
+                <button type="button" class="btn btn-danger px-4" id="confirmButton">
+                    <i class="fas fa-check me-1"></i>확인
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 진행 상황 모달 -->
+<div class="modal fade" id="progressModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center p-4">
+                <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h5>Redis 작업 진행 중...</h5>
+                <p class="text-muted mb-0">잠시만 기다려주세요.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+
+    <script>
+        let currentAction = '';
+        let dataTable;
+
+        function confirmAction(action) {
+            currentAction = action;
+            let message = '';
+            let dangerLevel = '';
+            
+            switch(action) {
+                case 'deleteClientKeys':
+                    message = '<div class="alert alert-warning"><i class="fas fa-users fa-2x mb-3"></i><h5>클라이언트 캐시 키 삭제</h5><p>모든 클라이언트 관련 캐시 키를 삭제합니다.<br><strong>@Model.ClientKeys 개의 키가 삭제됩니다.</strong></p></div>';
+                    dangerLevel = 'warning';
+                    break;
+                case 'deleteAllKeys':
+                    message = '<div class="alert alert-danger"><i class="fas fa-database fa-2x mb-3"></i><h5 class="text-danger">⚠️ 위험: 모든 애플리케이션 캐시 삭제</h5><p><strong class="text-danger">모든 애플리케이션 캐시 키가 삭제됩니다!</strong><br>@Model.TotalKeys 개의 키가 영구적으로 삭제됩니다.<br><br><strong>이 작업은 되돌릴 수 없습니다!</strong></p></div>';
+                    dangerLevel = 'danger';
+                    break;
+                case 'flushDatabase':
+                    message = '<div class="alert alert-danger"><i class="fas fa-skull-crossbones fa-2x mb-3"></i><h5 class="text-danger">💀 매우 위험: Redis DB 전체 초기화</h5><p><strong class="text-danger">전체 Redis 데이터베이스가 완전히 초기화됩니다!</strong><br><br>모든 데이터 (캐시, 세션, 기타 모든 키)가 영구적으로 삭제됩니다.<br><br><strong class="text-danger">이 작업은 절대 되돌릴 수 없습니다!</strong></p></div>';
+                    dangerLevel = 'danger';
+                    break;
+            }
+            
+            document.getElementById('confirmModalBody').innerHTML = message;
+            
+            // 버튼 색상 변경
+            const confirmBtn = document.getElementById('confirmButton');
+            if (dangerLevel === 'danger') {
+                confirmBtn.className = 'btn btn-danger px-4';
+                confirmBtn.innerHTML = '<i class="fas fa-skull-crossbones me-1"></i>위험 작업 실행';
+            } else {
+                confirmBtn.className = 'btn btn-warning px-4';
+                confirmBtn.innerHTML = '<i class="fas fa-check me-1"></i>확인';
+            }
+            
+            const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+            modal.show();
+        }
+
+        document.getElementById('confirmButton').addEventListener('click', function() {
+            // 확인 모달 숨기기
+            const confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmModal'));
+            confirmModal.hide();
+            
+            // 진행 상황 모달 표시
+            const progressModal = new bootstrap.Modal(document.getElementById('progressModal'));
+            progressModal.show();
+            
+            // 실제 작업 실행
+            setTimeout(() => {
+                switch(currentAction) {
+                    case 'deleteClientKeys':
+                        document.getElementById('deleteClientKeysForm').submit();
+                        break;
+                    case 'deleteAllKeys':
+                        document.getElementById('deleteAllKeysForm').submit();
+                        break;
+                    case 'flushDatabase':
+                        document.getElementById('flushDatabaseForm').submit();
+                        break;
+                }
+            }, 500);
+        });
+
+        function confirmDelete(type) {
+            return confirm(`정말로 이 ${type}를 삭제하시겠습니까?\n\n⚠️ 이 작업은 되돌릴 수 없습니다.`);
+        }
+
+        function filterByType(type) {
+            if (dataTable) {
+                if (type === '') {
+                    dataTable.search('').columns().search('').draw();
+                } else {
+                    dataTable.column(1).search(type).draw();
+                }
+            } else {
+                // DataTable이 없는 경우 기본 필터링
+                const rows = document.querySelectorAll('#cacheTable tbody tr');
+                rows.forEach(row => {
+                    if (type === '' || row.getAttribute('data-type') === type) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            }
+        }
+
+        function searchKeys() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            if (dataTable) {
+                dataTable.search(searchTerm).draw();
+            } else {
+                const rows = document.querySelectorAll('.cache-row');
+                rows.forEach(row => {
+                    const keyText = row.querySelector('code').textContent.toLowerCase();
+                    if (keyText.includes(searchTerm)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            }
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            searchKeys();
+        }
+
+        function copyKey(key) {
+            navigator.clipboard.writeText(key).then(function() {
+                // 임시 성공 메시지
+                const button = event.target.closest('button');
+                const originalIcon = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-check text-success"></i>';
+                
+                setTimeout(() => {
+                    button.innerHTML = originalIcon;
+                }, 2000);
+            }).catch(function(err) {
+                console.error('복사 실패:', err);
+                alert('키 복사에 실패했습니다.');
+            });
+        }
+
+        // DataTable 초기화
+        $(document).ready(function() {
+            if ($('#cacheTable tbody tr').length > 0) {
+                dataTable = $('#cacheTable').DataTable({
+                    pageLength: 25,
+                    order: [[1, 'asc'], [0, 'asc']],
+                    language: {
+                        url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/ko.json'
+                    },
+                    columnDefs: [
+                        { targets: [4], orderable: false }
+                    ]
+                });
+            }
+        });
+
+        // 페이지 자동 새로고침 (60초마다)
+        setTimeout(function () {
+            location.reload();
+        }, 60000);
+
+        // 실시간 시계
+        function updateClock() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('ko-KR');
+            document.title = `Redis 관리 - ${timeString}`;
+        }
+
+        setInterval(updateClock, 1000);
+    </script>
+
+    <style>
+        .card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .btn {
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+        
+        .table-hover tbody tr:hover {
+            background-color: rgba(0,123,255,0.1);
+        }
+        
+        .font-monospace {
+            font-family: 'Courier New', monospace;
+        }
+        
+        .alert {
+            border: none;
+            border-radius: 10px;
+        }
+        
+        .modal-content {
+            border-radius: 15px;
+            border: none;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        
+        .badge {
+            font-size: 0.75em;
+        }
+        
+        .input-group-text {
+            background-color: #f8f9fa;
+        }
+        
+        .cache-row {
+            transition: background-color 0.2s ease;
+        }
+        
+        .cache-row:hover {
+            background-color: rgba(0,123,255,0.05) !important;
+        }
+        
+        code {
+            font-size: 0.85em;
+            word-break: break-all;
+        }
+    </style>
+}

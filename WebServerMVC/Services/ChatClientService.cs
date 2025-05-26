@@ -8,12 +8,12 @@ using Microsoft.Extensions.Caching.Distributed;
 
 namespace WebServerMVC.Services
 {
-    public class ClientService : IClientService
+    public class ChatClientService : IChatClientService
     {
         private readonly IClientRepository _clientRepository;
         private readonly IDistributedCache _cache;
 
-        public ClientService(IClientRepository clientRepository, IDistributedCache cache)
+        public ChatClientService(IClientRepository clientRepository, IDistributedCache cache)
         {
             _clientRepository = clientRepository;
             _cache = cache;

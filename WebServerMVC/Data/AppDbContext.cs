@@ -1,7 +1,5 @@
 ﻿using WebServerMVC.Models;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
-using System.Reflection.Emit;
 
 namespace WebServerMVC.Data
 {
@@ -13,6 +11,7 @@ namespace WebServerMVC.Data
 
         public DbSet<Client> Clients { get; set; }
         public DbSet<ClientMatch> Matches { get; set; }
+        public DbSet<InAppPurchase> InAppPurchases { get; set; } // 추가
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -32,6 +31,31 @@ namespace WebServerMVC.Data
 
             modelBuilder.Entity<ClientMatch>()
                 .HasIndex(m => m.MatchedAt);
+
+            // InAppPurchase 엔티티 구성 (추가)
+            modelBuilder.Entity<InAppPurchase>()
+                .HasKey(p => p.Id);
+
+            modelBuilder.Entity<InAppPurchase>()
+                .HasIndex(p => p.ClientId);
+
+            modelBuilder.Entity<InAppPurchase>()
+                .HasIndex(p => p.PurchaseToken)
+                .IsUnique();
+
+            modelBuilder.Entity<InAppPurchase>()
+                .HasIndex(p => p.Status);
+
+            modelBuilder.Entity<InAppPurchase>()
+                .HasIndex(p => p.PurchasedAt);
+
+            modelBuilder.Entity<InAppPurchase>()
+                .Property(p => p.Amount)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<InAppPurchase>()
+                .Property(p => p.Status)
+                .HasConversion<string>();
         }
     }
 }

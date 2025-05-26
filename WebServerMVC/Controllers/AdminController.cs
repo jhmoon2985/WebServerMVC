@@ -8,13 +8,13 @@ namespace WebServerMVC.Controllers
 {
     public class AdminController : Controller
     {
-        private readonly IClientService _clientService;
+        private readonly IChatClientService _clientService;
         private readonly IMatchingService _matchingService;
         private readonly IMessageService _messageService;
         private readonly IImageService _imageService;
 
         public AdminController(
-            IClientService clientService,
+            IChatClientService clientService,
             IMatchingService matchingService,
             IMessageService messageService,
             IImageService imageService)
