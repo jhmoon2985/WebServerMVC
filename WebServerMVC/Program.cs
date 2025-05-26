@@ -15,6 +15,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews();
 builder.Services.AddSignalR();
 
+// HttpClient 추가 (인앱결제 API 호출용)
+builder.Services.AddHttpClient();
+
 // Authentication 추가
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -50,11 +53,29 @@ builder.Services.AddSingleton<WaitingQueue>();
 // ������ ����
 builder.Services.AddScoped<IClientRepository, ClientRepository>();
 builder.Services.AddScoped<IMatchRepository, MatchRepository>();
+builder.Services.AddScoped<IInAppPurchaseRepository, InAppPurchaseRepository>(); // 추가
+
 builder.Services.AddScoped<IChatClientService, ChatClientService>();
 builder.Services.AddScoped<IMatchingService, MatchingService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<IMessageService, MessageService>();
+builder.Services.AddScoped<GooglePlayService>();
+builder.Services.AddScoped<OneStoreService>();
+builder.Services.AddScoped<IInAppPurchaseService, OptimizedInAppPurchaseService>(); // 추가
+
+// HttpClient 설정 (재시도 정책 포함)
+builder.Services.AddHttpClient<GooglePlayService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(60);
+    client.DefaultRequestHeaders.Add("User-Agent", "WebServerMVC/1.0");
+});
+
+builder.Services.AddHttpClient<OneStoreService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+    client.DefaultRequestHeaders.Add("User-Agent", "WebServerMVC/1.0");
+});
 
 // ���� ���ε�
 builder.Services.Configure<ClientSettings>(builder.Configuration.GetSection("ClientSettings"));
