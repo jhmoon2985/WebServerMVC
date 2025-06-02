@@ -1,0 +1,259 @@
+@model List<ProductInfo>
+@{
+    ViewData["Title"] = "상품 관리";
+}
+
+<div class="container">
+    <div class="mb-3">
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>인앱결제 관리로
+        </a>
+    </div>
+
+    <h1 class="mb-4">
+        <i class="fas fa-box me-2"></i>상품 관리
+    </h1>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- 상품 통계 -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white text-center">
+                <div class="card-body">
+                    <i class="fas fa-box fa-2x mb-2"></i>
+                    <h4>@Model.Count</h4>
+                    <p>총 상품</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white text-center">
+                <div class="card-body">
+                    <i class="fas fa-check-circle fa-2x mb-2"></i>
+                    <h4>@Model.Count(p => p.IsActive)</h4>
+                    <p>활성 상품</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white text-center">
+                <div class="card-body">
+                    <i class="fas fa-coins fa-2x mb-2"></i>
+                    <h4>@Model.Sum(p => p.Points).ToString("N0")</h4>
+                    <p>총 포인트</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark text-center">
+                <div class="card-body">
+                    <i class="fas fa-won-sign fa-2x mb-2"></i>
+                    <h4>₩@Model.Sum(p => p.Price).ToString("N0")</h4>
+                    <p>총 가격</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 상품 목록 -->
+    <div class="card">
+        <div class="card-header">
+            <h5><i class="fas fa-list me-2"></i>상품 목록</h5>
+        </div>
+        <div class="card-body">
+            @if (Model.Any())
+            {
+                <div class="row">
+                    @foreach (var product in Model.OrderBy(p => p.Points))
+                    {
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100 @(product.IsActive ? "border-success" : "border-secondary")">
+                                <div
+                                    class="card-header text-center @(product.IsActive ? "bg-success text-white" : "bg-secondary text-white")">
+                                    <h5 class="mb-0">@product.Name</h5>
+                                </div>
+                                <div class="card-body text-center">
+                                    <div class="mb-3">
+                                        <i class="fas fa-coins fa-3x text-primary"></i>
+                                    </div>
+                                    <h2 class="text-primary">@product.Points.ToString("N0")</h2>
+                                    <p class="text-muted">포인트</p>
+                                    <hr>
+                                    <h4 class="text-success">₩@product.Price.ToString("N0")</h4>
+                                    <p class="text-muted">가격</p>
+                                </div>
+                                <div class="card-footer">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <small class="text-muted">
+                                                <strong>상품 ID:</strong><br>
+                                                <code>@product.ProductId</code>
+                                            </small>
+                                        </div>
+                                        <div class="col-6 text-end">
+                                            @if (product.IsActive)
+                                            {
+                                                <span class="badge bg-success">활성</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">비활성</span>
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <small class="text-muted">
+                                            <i class="fas fa-calculator me-1"></i>
+                                            포인트당 가격: ₩@Math.Round(product.Price / product.Points, 2)
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- 상품 비교 테이블 -->
+                <div class="mt-4">
+                    <h5><i class="fas fa-table me-2"></i>상품 비교</h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>상품 ID</th>
+                                    <th>상품명</th>
+                                    <th class="text-end">포인트</th>
+                                    <th class="text-end">가격</th>
+                                    <th class="text-end">포인트당 가격</th>
+                                    <th class="text-center">상태</th>
+                                    <th class="text-center">할인율</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{
+                                    var baseProduct = Model.OrderBy(p => p.Points).FirstOrDefault();
+                                    var baseRatio = baseProduct != null ? baseProduct.Price / baseProduct.Points : 0;
+                                }
+                                @foreach (var product in Model.OrderBy(p => p.Points))
+                                {
+                                    var ratio = product.Price / product.Points;
+                                    var discountPercent = baseRatio > 0 ? Math.Round((1 - ratio / baseRatio) * 100, 1) : 0;
+
+                                    <tr class="@(product.IsActive ? "" : "table-secondary")">
+                                        <td><code>@product.ProductId</code></td>
+                                        <td>@product.Name</td>
+                                        <td class="text-end">
+                                            <span class="badge bg-primary">@product.Points.ToString("N0")</span>
+                                        </td>
+                                        <td class="text-end">₩@product.Price.ToString("N0")</td>
+                                        <td class="text-end">₩@Math.Round(ratio, 2)</td>
+                                        <td class="text-center">
+                                            @if (product.IsActive)
+                                            {
+                                                <span class="badge bg-success">활성</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">비활성</span>
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            @if (discountPercent > 0)
+                                            {
+                                                <span class="badge bg-info">@discountPercent%</span>
+                                            }
+                                            else if (discountPercent < 0)
+                                            {
+                                                <span class="badge bg-warning">+@Math.Abs(discountPercent)%</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">기준</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle fa-2x mb-3"></i>
+                    <h5>등록된 상품이 없습니다</h5>
+                    <p class="mb-0">시스템에 상품이 등록되지 않았습니다.</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- 상품 정보 안내 -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-info-circle me-2"></i>상품 정보</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-check text-success me-2"></i>모든 상품은 포인트로 교환됩니다</li>
+                        <li><i class="fas fa-check text-success me-2"></i>구매 후 즉시 포인트가 지급됩니다</li>
+                        <li><i class="fas fa-check text-success me-2"></i>포인트는 선호도 활성화에 사용됩니다</li>
+                        <li><i class="fas fa-check text-success me-2"></i>환불은 각 스토어 정책을 따릅니다</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-cogs me-2"></i>관리 기능</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary" onclick="refreshProducts()">
+                            <i class="fas fa-sync-alt me-1"></i>상품 목록 새로고침
+                        </button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>인앱결제 관리로 돌아가기
+                        </a>
+                        <a asp-controller="Admin" asp-action="Points" class="btn btn-outline-info">
+                            <i class="fas fa-coins me-1"></i>포인트 관리
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function refreshProducts() {
+            location.reload();
+        }
+
+        // 차트 생성 (Chart.js가 있다면)
+        document.addEventListener('DOMContentLoaded', function () {
+            // 상품별 포인트 분포 차트 등을 여기에 추가할 수 있습니다
+            console.log('Products page loaded');
+        });
+    </script>
+}

@@ -1,0 +1,404 @@
+@model PurchaseStatsViewModel
+@{
+    ViewData["Title"] = "인앱결제 관리";
+}
+
+<div class="container">
+    <h1 class="mb-4">
+        <i class="fas fa-shopping-cart me-2"></i>인앱결제 관리
+    </h1>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- 서비스 상태 카드 -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5><i class="fab fa-google-play me-2"></i>Google Play (개발 모드)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-warning">Mock 모드</span>
+                            <p class="mt-2 mb-0">실제 API 호출 없이 시뮬레이션으로 처리됩니다.</p>
+                        </div>
+                        <div>
+                            @if (ViewBag.GooglePlayConnection == true)
+                            {
+                                <span class="badge bg-success fs-6">연결됨</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary fs-6">Mock</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                    <h5><i class="fas fa-store me-2"></i>ONE Store (실제 API)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            @if (ViewBag.OneStoreConfigValid == true)
+                            {
+                                <span class="badge bg-success">설정 완료</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">설정 필요</span>
+                            }
+                            <p class="mt-2 mb-0">실제 OneStore API로 구매를 검증합니다.</p>
+                        </div>
+                        <div>
+                            @if (ViewBag.OneStoreConnection == true)
+                            {
+                                <span class="badge bg-success fs-6">연결됨</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger fs-6">연결 실패</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <form asp-action="TestOneStoreConnection" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-info me-2">
+                                <i class="fas fa-plug me-1"></i>연결 테스트
+                            </button>
+                        </form>
+                        <form asp-action="InvalidateOneStoreToken" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-warning">
+                                <i class="fas fa-refresh me-1"></i>토큰 초기화
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 구매 통계 -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-bar me-2"></i>구매 통계</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-2">
+                            <div class="card bg-primary text-white text-center">
+                                <div class="card-body">
+                                    <i class="fas fa-shopping-cart fa-2x mb-2"></i>
+                                    <h4>@Model.TotalPurchases</h4>
+                                    <p>총 구매</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card bg-success text-white text-center">
+                                <div class="card-body">
+                                    <i class="fas fa-won-sign fa-2x mb-2"></i>
+                                    <h4>@Model.TotalAmount.ToString("N0")</h4>
+                                    <p>총 금액</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card bg-info text-white text-center">
+                                <div class="card-body">
+                                    <i class="fas fa-coins fa-2x mb-2"></i>
+                                    <h4>@Model.TotalPoints.ToString("N0")</h4>
+                                    <p>총 포인트</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card bg-warning text-dark text-center">
+                                <div class="card-body">
+                                    <i class="fab fa-google-play fa-2x mb-2"></i>
+                                    <h4>@Model.GooglePurchases</h4>
+                                    <p>Google Play</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card bg-secondary text-white text-center">
+                                <div class="card-body">
+                                    <i class="fas fa-store fa-2x mb-2"></i>
+                                    <h4>@Model.OneStorePurchases</h4>
+                                    <p>ONE Store</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card bg-dark text-white text-center">
+                                <div class="card-body">
+                                    <i class="fas fa-calendar-day fa-2x mb-2"></i>
+                                    <h4>@Model.TodayPurchases</h4>
+                                    <p>오늘 구매</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 상태별 구매 통계 -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                    <h3>@Model.VerifiedPurchases</h3>
+                    <p class="text-muted">검증 완료</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-utensils fa-3x text-info mb-3"></i>
+                    <h3>@Model.ConsumedPurchases</h3>
+                    <p class="text-muted">소비 완료</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-times-circle fa-3x text-danger mb-3"></i>
+                    <h3>@Model.FailedPurchases</h3>
+                    <p class="text-muted">실패</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 수동 포인트 지급 -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-hand-holding-usd me-2"></i>수동 포인트 지급</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="ManualPointGrant" method="post">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="clientId">클라이언트 ID</label>
+                                    <input type="text" class="form-control" id="clientId" name="clientId" required>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="points">포인트</label>
+                                    <input type="number" class="form-control" id="points" name="points" min="1"
+                                        value="1000" required>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="reason">사유</label>
+                                    <input type="text" class="form-control" id="reason" name="reason"
+                                        placeholder="지급 사유">
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label>&nbsp;</label>
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="fas fa-plus me-1"></i>지급
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-link me-2"></i>빠른 이동</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a asp-action="Products" class="btn btn-outline-primary">
+                            <i class="fas fa-box me-2"></i>상품 관리
+                        </a>
+                        <a asp-controller="Admin" asp-action="Points" class="btn btn-outline-info">
+                            <i class="fas fa-coins me-2"></i>포인트 관리
+                        </a>
+                        <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary">
+                            <i class="fas fa-users me-2"></i>클라이언트 관리
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 최근 구매 내역 -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5><i class="fas fa-history me-2"></i>최근 구매 내역</h5>
+            <button class="btn btn-sm btn-outline-primary" onclick="refreshPurchases()">
+                <i class="fas fa-sync-alt me-1"></i>새로고침
+            </button>
+        </div>
+        <div class="card-body">
+            @if (Model.RecentPurchases.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>구매 ID</th>
+                                <th>클라이언트</th>
+                                <th>스토어</th>
+                                <th>상품</th>
+                                <th>포인트</th>
+                                <th>금액</th>
+                                <th>상태</th>
+                                <th>구매 시간</th>
+                                <th>액션</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var purchase in Model.RecentPurchases)
+                            {
+                                <tr>
+                                    <td>
+                                        <code>@purchase.Id.Substring(0, 8)...</code>
+                                    </td>
+                                    <td>
+                                        <a asp-action="ClientPurchases" asp-route-clientId="@purchase.ClientId">
+                                            @purchase.ClientId.Substring(0, 8)...
+                                        </a>
+                                    </td>
+                                    <td>
+                                        @if (purchase.Store == "google")
+                                        {
+                                            <span class="badge bg-warning">
+                                                <i class="fab fa-google-play me-1"></i>Google
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-info">
+                                                <i class="fas fa-store me-1"></i>OneStore
+                                            </span>
+                                        }
+                                    </td>
+                                    <td>@purchase.ProductId</td>
+                                    <td class="text-end">
+                                        <span class="badge bg-primary">@purchase.Points.ToString("N0")</span>
+                                    </td>
+                                    <td class="text-end">₩@purchase.Amount.ToString("N0")</td>
+                                    <td>
+                                        @switch (purchase.Status)
+                                        {
+                                            case PurchaseStatus.Verified:
+                                                <span class="badge bg-success">검증완료</span>
+                                                break;
+                                            case PurchaseStatus.Consumed:
+                                                <span class="badge bg-info">소비완료</span>
+                                                break;
+                                            case PurchaseStatus.Failed:
+                                                <span class="badge bg-danger">실패</span>
+                                                break;
+                                            case PurchaseStatus.Pending:
+                                                <span class="badge bg-warning">대기중</span>
+                                                break;
+                                            default:
+                                                <span class="badge bg-secondary">알수없음</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>
+                                        <small>@purchase.PurchasedAt.ToString("MM-dd HH:mm")</small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a asp-action="Details" asp-route-id="@purchase.Id"
+                                                class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            @if (purchase.Status == PurchaseStatus.Verified)
+                                            {
+                                                <form asp-action="ConsumePurchase" method="post" style="display: inline;">
+                                                    <input type="hidden" name="purchaseId" value="@purchase.Id" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-info"
+                                                        onclick="return confirm('이 구매를 소비 처리하시겠습니까?')">
+                                                        <i class="fas fa-utensils"></i>
+                                                    </button>
+                                                </form>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle fa-2x mb-3"></i>
+                    <h5>구매 내역이 없습니다</h5>
+                    <p class="mb-0">아직 처리된 구매가 없습니다.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function refreshPurchases() {
+            location.reload();
+        }
+
+        // 실시간 통계 업데이트 (30초마다)
+        setInterval(function () {
+            $.get('/PurchaseAdmin/GetPurchaseStats', function (data) {
+                if (data && !data.Error) {
+                    console.log('Purchase stats updated:', data);
+                    // 필요시 DOM 업데이트 로직 추가
+                }
+            }).fail(function () {
+                console.log('Failed to update purchase stats');
+            });
+        }, 30000);
+
+        // 페이지 자동 새로고침 (5분마다)
+        setTimeout(function () {
+            location.reload();
+        }, 300000);
+    </script>
+}

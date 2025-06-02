@@ -60,9 +60,16 @@ builder.Services.AddScoped<IMatchingService, MatchingService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<IMessageService, MessageService>();
-builder.Services.AddScoped<GooglePlayService>();
+
+// 인앱결제 서비스 등록 (Google Mock + OneStore 실제)
+builder.Services.AddScoped<MockGooglePlayService>();
 builder.Services.AddScoped<OneStoreService>();
-builder.Services.AddScoped<IInAppPurchaseService, OptimizedInAppPurchaseService>(); // 추가
+builder.Services.AddScoped<IInAppPurchaseService, HybridInAppPurchaseService>();
+// 실제 Google Play API 사용 시 주석 해제
+// builder.Services.AddScoped<GooglePlayService>(); 
+// builder.Services.AddScoped<GooglePlayService>();
+// builder.Services.AddScoped<OneStoreService>();
+// builder.Services.AddScoped<IInAppPurchaseService, OptimizedInAppPurchaseService>(); // 추가
 
 // HttpClient 설정 (재시도 정책 포함)
 builder.Services.AddHttpClient<GooglePlayService>(client =>

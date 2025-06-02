@@ -1,0 +1,377 @@
+@model InAppPurchase
+@{
+    ViewData["Title"] = "구매 상세 정보";
+    var client = ViewBag.Client as Client;
+}
+
+<div class="container">
+    <div class="mb-3">
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>인앱결제 관리로
+        </a>
+        @if (client != null)
+        {
+            <a asp-action="ClientPurchases" asp-route-clientId="@client.ClientId" class="btn btn-outline-info">
+                <i class="fas fa-user me-1"></i>클라이언트 구매내역
+            </a>
+        }
+    </div>
+
+    <h1 class="mb-4">
+        <i class="fas fa-receipt me-2"></i>구매 상세 정보
+    </h1>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="row">
+        <!-- 구매 기본 정보 -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-info-circle me-2"></i>구매 정보</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <th width="40%">구매 ID:</th>
+                                    <td><code>@Model.Id</code></td>
+                                </tr>
+                                <tr>
+                                    <th>클라이언트 ID:</th>
+                                    <td>
+                                        @if (client != null)
+                                        {
+                                            <a asp-controller="Admin" asp-action="Details" asp-route-id="@Model.ClientId">
+                                                @Model.ClientId.Substring(0, 8)...
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <code>@Model.ClientId.Substring(0, 8)...</code>
+                                        }
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>스토어:</th>
+                                    <td>
+                                        @if (Model.Store == "google")
+                                        {
+                                            <span class="badge bg-warning">
+                                                <i class="fab fa-google-play me-1"></i>Google Play
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-info">
+                                                <i class="fas fa-store me-1"></i>ONE Store
+                                            </span>
+                                        }
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>상품 ID:</th>
+                                    <td><code>@Model.ProductId</code></td>
+                                </tr>
+                                <tr>
+                                    <th>트랜잭션 ID:</th>
+                                    <td><code>@Model.TransactionId</code></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <th width="40%">포인트:</th>
+                                    <td>
+                                        <span class="badge bg-primary fs-6">@Model.Points.ToString("N0")</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>금액:</th>
+                                    <td>
+                                        <span class="text-success fs-5">₩@Model.Amount.ToString("N0")</span>
+                                        <small class="text-muted">(@Model.Currency)</small>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>상태:</th>
+                                    <td>
+                                        @switch (Model.Status)
+                                        {
+                                            case PurchaseStatus.Verified:
+                                                <span class="badge bg-success fs-6">검증완료</span>
+                                                break;
+                                            case PurchaseStatus.Consumed:
+                                                <span class="badge bg-info fs-6">소비완료</span>
+                                                break;
+                                            case PurchaseStatus.Failed:
+                                                <span class="badge bg-danger fs-6">실패</span>
+                                                break;
+                                            case PurchaseStatus.Pending:
+                                                <span class="badge bg-warning fs-6">대기중</span>
+                                                break;
+                                            case PurchaseStatus.Refunded:
+                                                <span class="badge bg-secondary fs-6">환불됨</span>
+                                                break;
+                                            default:
+                                                <span class="badge bg-dark fs-6">알수없음</span>
+                                                break;
+                                        }
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>구매 시간:</th>
+                                    <td>
+                                        <span title="@Model.PurchasedAt.ToString("yyyy-MM-dd HH:mm:ss")">
+                                            @Model.PurchasedAt.ToString("yyyy-MM-dd HH:mm")
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>검증 시간:</th>
+                                    <td>
+                                        @if (Model.VerifiedAt.HasValue)
+                                        {
+                                            <span title="@Model.VerifiedAt.Value.ToString("yyyy-MM-dd HH:mm:ss")">
+                                                @Model.VerifiedAt.Value.ToString("yyyy-MM-dd HH:mm")
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">미검증</span>
+                                        }
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 구매 토큰 정보 -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5><i class="fas fa-key me-2"></i>토큰 정보</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label"><strong>구매 토큰:</strong></label>
+                        <div class="input-group">
+                            <input type="text" class="form-control font-monospace" value="@Model.PurchaseToken" readonly
+                                id="purchaseToken">
+                            <button class="btn btn-outline-secondary" type="button"
+                                onclick="copyToClipboard('purchaseToken')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 검증 데이터 -->
+            @if (!string.IsNullOrEmpty(Model.VerificationData))
+            {
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5><i class="fas fa-code me-2"></i>검증 데이터</h5>
+                    </div>
+                    <div class="card-body">
+                        <pre><code class="language-json">@Model.VerificationData</code></pre>
+                    </div>
+                </div>
+            }
+
+            <!-- 오류 메시지 -->
+            @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+            {
+                <div class="card mt-3 border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h5><i class="fas fa-exclamation-triangle me-2"></i>오류 정보</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-danger">
+                            @Model.ErrorMessage
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- 클라이언트 정보 & 액션 -->
+        <div class="col-md-4">
+            @if (client != null)
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-user me-2"></i>클라이언트 정보</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-borderless">
+                            <tr>
+                                <th>ID:</th>
+                                <td><code>@client.ClientId.Substring(0, 8)...</code></td>
+                            </tr>
+                            <tr>
+                                <th>현재 포인트:</th>
+                                <td>
+                                    <span class="badge bg-primary">@client.Points.ToString("N0")</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>성별:</th>
+                                <td>
+                                    @(string.IsNullOrEmpty(client.Gender) ? "미설정" :
+                                                                    (client.Gender.ToLower() == "male" ? "남성" : "여성"))
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>연결 상태:</th>
+                            <td>
+                                @if (string.IsNullOrEmpty(client.ConnectionId))
+                                    {
+                                        <span class="badge bg-secondary">오프라인</span>
+                                    }
+                                    else if (client.IsMatched)
+                                    {
+                                        <span class="badge bg-success">매칭됨</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning text-dark">대기 중</span>
+                                    }
+                                </td>
+                            </tr>
+                        </table>
+                        <div class="d-grid">
+                            <a asp-controller="Admin" asp-action="Details" asp-route-id="@client.ClientId"
+                                class="btn btn-outline-primary">
+                                <i class="fas fa-user me-1"></i>클라이언트 상세보기
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- 관리 액션 -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5><i class="fas fa-cogs me-2"></i>관리 액션</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        @if (Model.Status == PurchaseStatus.Verified)
+                        {
+                            <form asp-action="ConsumePurchase" method="post">
+                                <input type="hidden" name="purchaseId" value="@Model.Id" />
+                                <button type="submit" class="btn btn-info w-100"
+                                    onclick="return confirm('이 구매를 소비 처리하시겠습니까?')">
+                                    <i class="fas fa-utensils me-1"></i>소비 처리
+                                </button>
+                            </form>
+                        }
+
+                        <button class="btn btn-outline-secondary" onclick="refreshDetails()">
+                            <i class="fas fa-sync-alt me-1"></i>정보 새로고침
+                        </button>
+
+                        <a asp-action="ClientPurchases" asp-route-clientId="@Model.ClientId"
+                            class="btn btn-outline-primary">
+                            <i class="fas fa-list me-1"></i>같은 클라이언트 구매내역
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 구매 통계 -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-pie me-2"></i>구매 정보</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-12 mb-2">
+                            <div class="border-bottom pb-2">
+                                <h6 class="text-muted">포인트당 가격</h6>
+                                <h4>₩@Math.Round(Model.Amount / Model.Points, 2)</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between">
+                            <span>처리 시간:</span>
+                            <strong>
+                                @if (Model.VerifiedAt.HasValue)
+                                {
+                                    var processingTime = Model.VerifiedAt.Value - Model.PurchasedAt;
+                                    <span>@processingTime.TotalSeconds.ToString("F1")초</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">미완료</span>
+                                }
+                            </strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+    <script>
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            element.select();
+            element.setSelectionRange(0, 99999); // For mobile devices
+
+            navigator.clipboard.writeText(element.value).then(function () {
+                // 성공 피드백
+                const button = event.target.closest('button');
+                const originalHtml = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-check"></i>';
+                button.classList.remove('btn-outline-secondary');
+                button.classList.add('btn-success');
+
+                setTimeout(function () {
+                    button.innerHTML = originalHtml;
+                    button.classList.remove('btn-success');
+                    button.classList.add('btn-outline-secondary');
+                }, 2000);
+            }).catch(function (err) {
+                console.error('복사 실패:', err);
+                alert('복사에 실패했습니다.');
+            });
+        }
+
+        function refreshDetails() {
+            location.reload();
+        }
+
+        // Prism.js 초기화
+        document.addEventListener('DOMContentLoaded', function () {
+            Prism.highlightAll();
+        });
+    </script>
+}

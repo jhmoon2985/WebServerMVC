@@ -37,6 +37,8 @@ namespace WebServerMVC.Services
         {
             try
             {
+                _logger.LogInformation($"Starting OneStore purchase verification for product: {productId}");
+
                 // 1️⃣ Access Token 획득
                 var accessToken = await GetAccessToken();
                 if (string.IsNullOrEmpty(accessToken))
@@ -63,25 +65,58 @@ namespace WebServerMVC.Services
                 request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
                 request.Content = content;
 
-                _logger.LogDebug($"ONE Store verification request: {productId}");
+                _logger.LogDebug($"OneStore verification request to: {verifyUrl}");
 
-                // 5️⃣ API 호출
-                using var response = await _httpClient.SendAsync(request);
-                
-                if (response.IsSuccessStatusCode)
+                // 5️⃣ API 호출 (재시도 로직 포함)
+                OneStorePurchaseResponse? purchaseResponse = null;
+                var maxRetries = 3;
+
+                for (int attempt = 1; attempt <= maxRetries; attempt++)
                 {
-                    var responseContent = await response.Content.ReadAsStringAsync();
-                    var purchaseResponse = JsonSerializer.Deserialize<OneStorePurchaseResponse>(responseContent);
-                    
-                    _logger.LogInformation($"ONE Store purchase verified successfully: {productId}");
-                    return purchaseResponse;
+                    try
+                    {
+                        using var response = await _httpClient.SendAsync(request);
+
+                        if (response.IsSuccessStatusCode)
+                        {
+                            var responseContent = await response.Content.ReadAsStringAsync();
+                            purchaseResponse = JsonSerializer.Deserialize<OneStorePurchaseResponse>(responseContent, new JsonSerializerOptions
+                            {
+                                PropertyNameCaseInsensitive = true
+                            });
+
+                            _logger.LogInformation($"OneStore purchase verified successfully: {productId}, PurchaseState: {purchaseResponse?.PurchaseState}");
+                            break;
+                        }
+                        else
+                        {
+                            var errorContent = await response.Content.ReadAsStringAsync();
+                            _logger.LogWarning($"OneStore verification failed (attempt {attempt}/{maxRetries}): {response.StatusCode}, {errorContent}");
+
+                            // 토큰 만료 등의 경우 캐시 무효화
+                            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                            {
+                                await InvalidateTokenCache();
+                            }
+
+                            if (attempt == maxRetries)
+                            {
+                                return null;
+                            }
+
+                            // 재시도 전 대기
+                            await Task.Delay(1000 * attempt);
+                        }
+                    }
+                    catch (HttpRequestException ex)
+                    {
+                        _logger.LogError(ex, $"OneStore API request failed (attempt {attempt}/{maxRetries})");
+                        if (attempt == maxRetries) throw;
+                        await Task.Delay(1000 * attempt);
+                    }
                 }
-                else
-                {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    _logger.LogWarning($"ONE Store verification failed: {response.StatusCode}, {errorContent}");
-                    return null;
-                }
+
+                return purchaseResponse;
             }
             catch (Exception ex)
             {
@@ -109,13 +144,18 @@ namespace WebServerMVC.Services
                 request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
 
                 using var response = await _httpClient.SendAsync(request);
-                
+
                 if (response.IsSuccessStatusCode)
                 {
                     var responseContent = await response.Content.ReadAsStringAsync();
-                    return JsonSerializer.Deserialize<OneStorePurchaseResponse>(responseContent);
+                    return JsonSerializer.Deserialize<OneStorePurchaseResponse>(responseContent, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
                 }
 
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning($"OneStore purchase status check failed: {response.StatusCode}, {errorContent}");
                 return null;
             }
             catch (Exception ex)
@@ -154,7 +194,7 @@ namespace WebServerMVC.Services
                 request.Content = content;
 
                 using var response = await _httpClient.SendAsync(request);
-                
+
                 if (response.IsSuccessStatusCode)
                 {
                     _logger.LogInformation($"ONE Store purchase cancelled: {purchaseId}");
@@ -197,12 +237,12 @@ namespace WebServerMVC.Services
 
                 if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(clientSecret))
                 {
-                    _logger.LogError("ONE Store ClientId or ClientSecret not configured");
+                    _logger.LogError("ONE Store ClientId or ClientSecret not configured in appsettings.json");
                     return null;
                 }
 
                 var tokenUrl = GetTokenUrl();
-                
+
                 var requestData = new FormUrlEncodedContent(new[]
                 {
                     new KeyValuePair<string, string>("grant_type", "client_credentials"),
@@ -210,25 +250,25 @@ namespace WebServerMVC.Services
                     new KeyValuePair<string, string>("client_secret", clientSecret)
                 });
 
-                _logger.LogDebug("Requesting new ONE Store access token");
+                _logger.LogDebug($"Requesting new ONE Store access token from: {tokenUrl}");
 
                 using var response = await _httpClient.PostAsync(tokenUrl, requestData);
-                
+
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync();
                     var tokenResponse = JsonSerializer.Deserialize<JsonElement>(content);
-                    
+
                     if (tokenResponse.TryGetProperty("access_token", out var accessTokenElement))
                     {
                         var accessToken = accessTokenElement.GetString();
-                        
+
                         // 3️⃣ 토큰 캐시 저장 (55분, 만료 5분 전까지)
                         var expiryTime = TimeSpan.FromMinutes(55);
                         if (tokenResponse.TryGetProperty("expires_in", out var expiresInElement))
                         {
                             var expiresIn = expiresInElement.GetInt32();
-                            expiryTime = TimeSpan.FromSeconds(expiresIn - 300); // 5분 여유
+                            expiryTime = TimeSpan.FromSeconds(Math.Max(expiresIn - 300, 300)); // 최소 5분
                         }
 
                         await _cache.SetStringAsync(cacheKey, accessToken, new DistributedCacheEntryOptions
@@ -236,8 +276,12 @@ namespace WebServerMVC.Services
                             AbsoluteExpirationRelativeToNow = expiryTime
                         });
 
-                        _logger.LogInformation($"ONE Store access token acquired and cached for {expiryTime.TotalMinutes} minutes");
+                        _logger.LogInformation($"ONE Store access token acquired and cached for {expiryTime.TotalMinutes:F1} minutes");
                         return accessToken;
+                    }
+                    else
+                    {
+                        _logger.LogError("ONE Store token response does not contain access_token");
                     }
                 }
                 else
@@ -272,10 +316,14 @@ namespace WebServerMVC.Services
             try
             {
                 var accessToken = await GetAccessToken();
-                return !string.IsNullOrEmpty(accessToken);
+                var isConnected = !string.IsNullOrEmpty(accessToken);
+
+                _logger.LogInformation($"ONE Store connection check: {(isConnected ? "Connected" : "Disconnected")}");
+                return isConnected;
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error checking ONE Store connection");
                 return false;
             }
         }
@@ -286,7 +334,9 @@ namespace WebServerMVC.Services
         private string GetTokenUrl()
         {
             var environment = _configuration["OneStore:Environment"]?.ToLower();
-            return environment == "sandbox" ? ONESTORE_SANDBOX_TOKEN_URL : ONESTORE_TOKEN_URL;
+            var url = environment == "sandbox" ? ONESTORE_SANDBOX_TOKEN_URL : ONESTORE_TOKEN_URL;
+            _logger.LogDebug($"Using OneStore token URL: {url} (environment: {environment ?? "production"})");
+            return url;
         }
 
         /// <summary>
@@ -295,7 +345,9 @@ namespace WebServerMVC.Services
         private string GetVerifyUrl()
         {
             var environment = _configuration["OneStore:Environment"]?.ToLower();
-            return environment == "sandbox" ? ONESTORE_SANDBOX_VERIFY_URL : ONESTORE_VERIFY_URL;
+            var url = environment == "sandbox" ? ONESTORE_SANDBOX_VERIFY_URL : ONESTORE_VERIFY_URL;
+            _logger.LogDebug($"Using OneStore verify URL: {url} (environment: {environment ?? "production"})");
+            return url;
         }
 
         /// <summary>
@@ -304,14 +356,161 @@ namespace WebServerMVC.Services
         private string GetApiBaseUrl()
         {
             var environment = _configuration["OneStore:Environment"]?.ToLower();
-            return environment == "sandbox" 
-                ? "https://sandbox-apis.onestore.co.kr" 
+            var baseUrl = environment == "sandbox"
+                ? "https://sandbox-apis.onestore.co.kr"
                 : "https://apis.onestore.co.kr";
+            return baseUrl;
+        }
+
+        /// <summary>
+        /// OneStore 서비스 설정 검증
+        /// </summary>
+        public bool ValidateConfiguration()
+        {
+            var clientId = _configuration["OneStore:ClientId"];
+            var clientSecret = _configuration["OneStore:ClientSecret"];
+            var environment = _configuration["OneStore:Environment"];
+
+            var isValid = !string.IsNullOrEmpty(clientId) && !string.IsNullOrEmpty(clientSecret);
+
+            _logger.LogInformation($"OneStore configuration validation: {(isValid ? "Valid" : "Invalid")} " +
+                                 $"(Environment: {environment ?? "production"})");
+
+            if (!isValid)
+            {
+                _logger.LogError("OneStore configuration is missing. Please set OneStore:ClientId and OneStore:ClientSecret in appsettings.json");
+            }
+
+            return isValid;
+        }
+
+        /// <summary>
+        /// 구매 토큰 검증 (캐시 포함)
+        /// </summary>
+        public async Task<bool> ValidatePurchaseToken(string purchaseToken)
+        {
+            if (string.IsNullOrEmpty(purchaseToken))
+            {
+                return false;
+            }
+
+            try
+            {
+                // 캐시에서 검증 결과 확인
+                var cacheKey = $"onestore_token_validation_{purchaseToken}";
+                var cachedResult = await _cache.GetStringAsync(cacheKey);
+
+                if (!string.IsNullOrEmpty(cachedResult))
+                {
+                    return bool.Parse(cachedResult);
+                }
+
+                // 토큰 형식 기본 검증 (OneStore 토큰은 Base64 형태)
+                var isValidFormat = IsValidTokenFormat(purchaseToken);
+
+                // 캐시에 결과 저장 (5분)
+                await _cache.SetStringAsync(cacheKey, isValidFormat.ToString(), new DistributedCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5)
+                });
+
+                return isValidFormat;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error validating purchase token: {purchaseToken}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 토큰 형식 검증
+        /// </summary>
+        private bool IsValidTokenFormat(string token)
+        {
+            try
+            {
+                // OneStore 토큰은 일반적으로 Base64 인코딩된 문자열
+                var tokenBytes = Convert.FromBase64String(token);
+                return tokenBytes.Length > 0;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 구매 내역 조회 (여러 개)
+        /// </summary>
+        public async Task<List<OneStorePurchaseResponse>> GetPurchaseHistory(string[] purchaseIds)
+        {
+            var results = new List<OneStorePurchaseResponse>();
+
+            if (purchaseIds == null || purchaseIds.Length == 0)
+            {
+                return results;
+            }
+
+            var tasks = purchaseIds.Select(async purchaseId =>
+            {
+                try
+                {
+                    var result = await GetPurchaseStatus(purchaseId);
+                    return result;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Error getting purchase status for {purchaseId}");
+                    return null;
+                }
+            });
+
+            var responses = await Task.WhenAll(tasks);
+
+            foreach (var response in responses)
+            {
+                if (response != null)
+                {
+                    results.Add(response);
+                }
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// 서비스 상태 정보 조회
+        /// </summary>
+        public async Task<OneStoreServiceStatus> GetServiceStatus()
+        {
+            var status = new OneStoreServiceStatus();
+
+            try
+            {
+                status.IsConfigured = ValidateConfiguration();
+                status.IsConnected = await CheckConnection();
+                status.Environment = _configuration["OneStore:Environment"] ?? "production";
+                status.LastChecked = DateTime.UtcNow;
+
+                if (status.IsConnected)
+                {
+                    var accessToken = await GetAccessToken();
+                    status.HasValidToken = !string.IsNullOrEmpty(accessToken);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting OneStore service status");
+                status.ErrorMessage = ex.Message;
+            }
+
+            return status;
         }
     }
 
     /// <summary>
-    /// ONE Store 구매 응답 모델 (상세버전)
+    /// ONE Store 구매 응답 모델 (향상된 버전)
     /// </summary>
     public class OneStorePurchaseResponse
     {
@@ -333,6 +532,17 @@ namespace WebServerMVC.Services
         /// 구매 시간을 DateTime으로 변환
         /// </summary>
         public DateTime PurchaseDateTime => DateTimeOffset.FromUnixTimeMilliseconds(PurchaseTime).DateTime;
+
+        /// <summary>
+        /// 구매 상태를 한국어로 표시
+        /// </summary>
+        public string PurchaseStateText => PurchaseState switch
+        {
+            0 => "구매완료",
+            1 => "취소됨",
+            2 => "환불됨",
+            _ => "알 수 없음"
+        };
     }
 
     /// <summary>
@@ -343,5 +553,30 @@ namespace WebServerMVC.Services
         public string Error { get; set; } = string.Empty;
         public string ErrorDescription { get; set; } = string.Empty;
         public int ErrorCode { get; set; }
+        public string? Details { get; set; }
+    }
+
+    /// <summary>
+    /// ONE Store 토큰 응답 모델
+    /// </summary>
+    public class OneStoreTokenResponse
+    {
+        public string AccessToken { get; set; } = string.Empty;
+        public string TokenType { get; set; } = "Bearer";
+        public int ExpiresIn { get; set; }
+        public string? Scope { get; set; }
+    }
+
+    /// <summary>
+    /// ONE Store 서비스 상태 모델
+    /// </summary>
+    public class OneStoreServiceStatus
+    {
+        public bool IsConfigured { get; set; }
+        public bool IsConnected { get; set; }
+        public bool HasValidToken { get; set; }
+        public string Environment { get; set; } = "production";
+        public DateTime LastChecked { get; set; }
+        public string? ErrorMessage { get; set; }
     }
 }

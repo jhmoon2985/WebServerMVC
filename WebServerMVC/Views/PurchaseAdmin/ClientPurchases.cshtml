@@ -1,0 +1,484 @@
+@model ClientPurchaseViewModel
+@{
+    ViewData["Title"] = "클라이언트 구매 내역";
+}
+
+<div class="container">
+    <div class="mb-3">
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>인앱결제 관리로
+        </a>
+        <a asp-controller="Admin" asp-action="Details" asp-route-id="@Model.Client.ClientId"
+            class="btn btn-outline-info">
+            <i class="fas fa-user me-1"></i>클라이언트 상세보기
+        </a>
+    </div>
+
+    <h1 class="mb-4">
+        <i class="fas fa-user-shopping me-2"></i>클라이언트 구매 내역
+    </h1>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- 클라이언트 정보 -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-user me-2"></i>클라이언트 정보</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <th width="40%">클라이언트 ID:</th>
+                                    <td><code>@Model.Client.ClientId</code></td>
+                                </tr>
+                                <tr>
+                                    <th>성별:</th>
+                                    <td>
+                                        @(string.IsNullOrEmpty(Model.Client.Gender) ? "미설정" :
+                                                                                (Model.Client.Gender.ToLower() == "male" ? "남성" : "여성"))
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>가입일:</th>
+                                    <td>@Model.Client.ConnectedAt.ToString("yyyy-MM-dd")</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <th width="40%">현재 포인트:</th>
+                                    <td>
+                                        <span class="badge bg-primary fs-6">@Model.Client.Points.ToString("N0")</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>연결 상태:</th>
+                                    <td>
+                                        @if (string.IsNullOrEmpty(Model.Client.ConnectionId))
+                                        {
+                                            <span class="badge bg-secondary">오프라인</span>
+                                        }
+                                        else if (Model.Client.IsMatched)
+                                        {
+                                            <span class="badge bg-success">매칭됨</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning text-dark">대기 중</span>
+                                        }
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>선호도 활성화:</th>
+                                    <td>
+                                        @if (Model.Client.IsPreferenceActive)
+                                        {
+                                            <span class="badge bg-success">활성화됨</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">비활성화</span>
+                                        }
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-bar me-2"></i>구매 통계</h5>
+                </div>
+                <div class="card-body text-center">
+                    <div class="row">
+                        <div class="col-6">
+                            <h4 class="text-primary">@Model.Purchases.Count</h4>
+                            <small class="text-muted">총 구매</small>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-success">₩@Model.TotalSpent.ToString("N0")</h4>
+                            <small class="text-muted">총 금액</small>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-6">
+                            <h4 class="text-info">@Model.TotalPoints.ToString("N0")</h4>
+                            <small class="text-muted">구매 포인트</small>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-warning">
+                                @if (Model.TotalSpent > 0)
+                                {
+                                    @Math.Round(Model.TotalPoints / Model.TotalSpent, 1)
+                                }
+                                else
+                                {
+                                    <span>0</span>
+                                }
+                            </h4>
+                            <small class="text-muted">포인트/원</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 구매 내역 -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5><i class="fas fa-shopping-cart me-2"></i>구매 내역 (@(Model.Purchases.Count)개)</h5>
+            <div>
+                <button class="btn btn-sm btn-outline-primary" onclick="refreshPurchases()">
+                    <i class="fas fa-sync-alt me-1"></i>새로고침
+                </button>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                        data-bs-toggle="dropdown">
+                        <i class="fas fa-filter me-1"></i>필터
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" onclick="filterByStatus('all')">전체</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="filterByStatus('verified')">검증완료</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="filterByStatus('consumed')">소비완료</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="filterByStatus('failed')">실패</a></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li><a class="dropdown-item" href="#" onclick="filterByStore('google')">Google Play</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="filterByStore('onestore')">ONE Store</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            @if (Model.Purchases.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="purchasesTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>구매 ID</th>
+                                <th>스토어</th>
+                                <th>상품</th>
+                                <th class="text-end">포인트</th>
+                                <th class="text-end">금액</th>
+                                <th>상태</th>
+                                <th>구매 시간</th>
+                                <th>검증 시간</th>
+                                <th>액션</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var purchase in Model.Purchases)
+                            {
+                                <tr data-status="@purchase.Status.ToString().ToLower()" data-store="@purchase.Store">
+                                    <td>
+                                        <a asp-action="Details" asp-route-id="@purchase.Id">
+                                            <code>@purchase.Id.Substring(0, 8)...</code>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        @if (purchase.Store == "google")
+                                        {
+                                            <span class="badge bg-warning">
+                                                <i class="fab fa-google-play me-1"></i>Google
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-info">
+                                                <i class="fas fa-store me-1"></i>OneStore
+                                            </span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <small>@purchase.ProductId</small>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="badge bg-primary">@purchase.Points.ToString("N0")</span>
+                                    </td>
+                                    <td class="text-end">₩@purchase.Amount.ToString("N0")</td>
+                                    <td>
+                                        @switch (purchase.Status)
+                                        {
+                                            case PurchaseStatus.Verified:
+                                                <span class="badge bg-success">검증완료</span>
+                                                break;
+                                            case PurchaseStatus.Consumed:
+                                                <span class="badge bg-info">소비완료</span>
+                                                break;
+                                            case PurchaseStatus.Failed:
+                                                <span class="badge bg-danger">실패</span>
+                                                break;
+                                            case PurchaseStatus.Pending:
+                                                <span class="badge bg-warning">대기중</span>
+                                                break;
+                                            case PurchaseStatus.Refunded:
+                                                <span class="badge bg-secondary">환불됨</span>
+                                                break;
+                                            default:
+                                                <span class="badge bg-dark">알수없음</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>
+                                        <small>@purchase.PurchasedAt.ToString("MM-dd HH:mm")</small>
+                                    </td>
+                                    <td>
+                                        @if (purchase.VerifiedAt.HasValue)
+                                        {
+                                            <small>@purchase.VerifiedAt.Value.ToString("MM-dd HH:mm")</small>
+                                        }
+                                        else
+                                        {
+                                            <small class="text-muted">미검증</small>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a asp-action="Details" asp-route-id="@purchase.Id"
+                                                class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            @if (purchase.Status == PurchaseStatus.Verified)
+                                            {
+                                                <form asp-action="ConsumePurchase" method="post" style="display: inline;">
+                                                    <input type="hidden" name="purchaseId" value="@purchase.Id" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-info"
+                                                        onclick="return confirm('이 구매를 소비 처리하시겠습니까?')">
+                                                        <i class="fas fa-utensils"></i>
+                                                    </button>
+                                                </form>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 구매 패턴 분석 -->
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6><i class="fas fa-chart-line me-2"></i>구매 패턴</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center">
+                                    <div class="col-4">
+                                        <h5 class="text-primary">@Model.Purchases.Count(p => p.Store == "google")</h5>
+                                        <small class="text-muted">Google Play</small>
+                                    </div>
+                                    <div class="col-4">
+                                        <h5 class="text-info">@Model.Purchases.Count(p => p.Store == "onestore")</h5>
+                                        <small class="text-muted">ONE Store</small>
+                                    </div>
+                                    <div class="col-4">
+                                        <h5 class="text-success">
+                                            @if (Model.Purchases.Any())
+                                            {
+                                                @Math.Round(Model.TotalSpent / Model.Purchases.Count, 0)
+                                            }
+                                            else
+                                            {
+                                                <span>0</span>
+                                            }
+                                        </h5>
+                                        <small class="text-muted">평균 구매액</small>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div class="row text-center">
+                                    <div class="col-6">
+                                        <h6 class="text-muted">최근 구매</h6>
+                                        <p>
+                                            @if (Model.Purchases.Any())
+                                            {
+                                                var latestPurchase = Model.Purchases.OrderByDescending(p =>
+                                                p.PurchasedAt).First();
+                                                var daysSince = (DateTime.UtcNow - latestPurchase.PurchasedAt).Days;
+                                                if (daysSince == 0)
+                                                {
+                                                    <span class="text-success">오늘</span>
+                                                }
+                                                else if (daysSince == 1)
+                                                {
+                                                    <span class="text-warning">어제</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-success">@(daysSince)일 전</span>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">없음</span>
+                                            }
+                                        </p>
+                                    </div>
+                                    <div class="col-6">
+                                        <h6 class="text-muted">선호 상품</h6>
+                                        <p>
+                                            @{
+                                                var favoriteProduct = Model.Purchases
+                                                .GroupBy(p => p.ProductId)
+                                                .OrderByDescending(g => g.Count())
+                                                .FirstOrDefault();
+                                            }
+                                            @if (favoriteProduct != null)
+                                            {
+                                                <small>@favoriteProduct.Key</small>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">없음</span>
+                                            }
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6><i class="fas fa-calendar me-2"></i>구매 이력</h6>
+                            </div>
+                            <div class="card-body">
+                                @if (Model.Purchases.Any())
+                                {
+                                    var monthlyPurchases = Model.Purchases
+                                    .GroupBy(p => new { p.PurchasedAt.Year, p.PurchasedAt.Month })
+                                    .OrderByDescending(g => g.Key.Year)
+                                    .ThenByDescending(g => g.Key.Month)
+                                    .Take(6);
+
+                                    foreach (var group in monthlyPurchases)
+                                    {
+                                        var monthName = new DateTime(group.Key.Year, group.Key.Month, 1).ToString("yyyy년 MM월");
+                                        var count = group.Count();
+                                        var amount = group.Sum(p => p.Amount);
+
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <div>
+                                                <strong>@monthName</strong>
+                                                <br>
+                                                <small class="text-muted">@(count)건</small>
+                                            </div>
+                                            <div class="text-end">
+                                                <strong>₩@amount.ToString("N0")</strong>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <p class="text-muted text-center">구매 이력이 없습니다.</p>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle fa-2x mb-3"></i>
+                    <h5>구매 내역이 없습니다</h5>
+                    <p class="mb-0">이 클라이언트는 아직 구매를 하지 않았습니다.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+
+    <script>
+        let purchasesTable;
+
+        $(document).ready(function () {
+            // DataTable 초기화
+            if ($('#purchasesTable tbody tr').length > 0) {
+                purchasesTable = $('#purchasesTable').DataTable({
+                    order: [[6, 'desc']], // 구매 시간 기준 내림차순
+                    pageLength: 25,
+                    language: {
+                        url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/ko.json'
+                    },
+                    columnDefs: [
+                        { targets: [8], orderable: false } // 액션 열은 정렬 불가
+                    ]
+                });
+            }
+        });
+
+        function refreshPurchases() {
+            location.reload();
+        }
+
+        function filterByStatus(status) {
+            if (purchasesTable) {
+                if (status === 'all') {
+                    purchasesTable.column(5).search('').draw();
+                } else {
+                    const statusText = {
+                        'verified': '검증완료',
+                        'consumed': '소비완료',
+                        'failed': '실패',
+                        'pending': '대기중'
+                    };
+                    purchasesTable.column(5).search(statusText[status] || status).draw();
+                }
+            }
+        }
+
+        function filterByStore(store) {
+            if (purchasesTable) {
+                if (store === 'all') {
+                    purchasesTable.column(1).search('').draw();
+                } else {
+                    const storeText = {
+                        'google': 'Google',
+                        'onestore': 'OneStore'
+                    };
+                    purchasesTable.column(1).search(storeText[store] || store).draw();
+                }
+            }
+        }
+
+        // 실시간 업데이트 (2분마다)
+        setInterval(function () {
+            console.log('Checking for purchase updates...');
+            // 필요시 AJAX로 새로운 구매 확인
+        }, 120000);
+    </script>
+}
